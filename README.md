@@ -9,7 +9,8 @@ To start contributing to this plugin, follow these steps:
 - Node.js 18.16.0 or higher
 - Yarn 1.22.19 or higher
 
-> **Note**: You can install Yarn using npm by running `npm install -g yarn`
+> [!NOTE]  
+> You can install Yarn using npm by running `npm install -g yarn`
 
 ### 1. Create a Nocobase development instance
 
@@ -23,7 +24,8 @@ yarn create nocobase-app <project_name> -d sqlite
 
 This will create a new Nocobase project in the `<project_name>` directory with SQLite as the database.
 
-> **Note**: SQLite is only recommended for development and testing purposes.
+> [!WARNING]  
+> SQLite is only recommended for development and testing purposes.
 
 Change directory to the project:
 
@@ -35,6 +37,12 @@ cd <project_name>
 
 ```bash
 yarn install
+```
+
+Install the sqlite driver explicitly in the workspace:
+
+```bash
+yarn add sqlite3 -W
 ```
 
 ```bash
@@ -49,7 +57,8 @@ This will install all dependencies and prepare the Nocobase instance.
 yarn dev
 ```
 
-> **Note**: The Nocobase instance will be accessible at `http://localhost:13000`. The default username and password are `admin@nocobase.com` and `admin123`.
+> [!NOTE]  
+> The Nocobase instance will be accessible at `http://localhost:13000`. The default username and password are `admin@nocobase.com` and `admin123`.
 
 ### 2. Add the plugin to your development environment
 
@@ -68,11 +77,14 @@ git clone https://github.com/wonder/plugin-hello.git
 
 #### 2.3. Upgrade Nocobase
 
-> **Important**: Make sure your Nocobase instance is running before upgrading!
+> [!CAUTION]  
+> Make sure your Nocobase instance is running before installing and upgrading!
 
 ```bash
-yarn nocobase install
-# or
+yarn install
+```
+
+```bash
 yarn nocobase upgrade
 ```
 
