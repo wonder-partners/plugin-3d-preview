@@ -7,7 +7,7 @@ import '@google/model-viewer';
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
   const url = useMemo(() => {
-     const src =
+    const src =
       file.url.startsWith('https://') || file.url.startsWith('http://')
         ? file.url
         : `${location.origin}/${file.url.replace(/^\//, '')}`;
@@ -56,8 +56,13 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
         <model-viewer
           src={url}
           alt={file.title}
+          field-of-view="30deg"
           auto-rotate
           camera-controls
+          shadow-intensity="0.33"
+          tone-mapping="agx"
+          exposure="1"
+          shadow-softness="1"
           style={{ width: '100%', height: '100%' }}
         />
       </div>
@@ -66,9 +71,9 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
 }
 
 export class Plugin3dPreviewClient extends Plugin {
-  async afterAdd() {}
+  async afterAdd() { }
 
-  async beforeLoad() {}
+  async beforeLoad() { }
 
   async load() {
     attachmentFileTypes.add({
@@ -77,15 +82,15 @@ export class Plugin3dPreviewClient extends Plugin {
           return true;
         }
         if (file.url) {
-            const parts = file.url.split('.');
-            if (parts.length > 1) {
-                const ext = parts[parts.length - 1].toLowerCase();
-                return ['glb', 'gltf'].includes(ext);
-            }
+          const parts = file.url.split('.');
+          if (parts.length > 1) {
+            const ext = parts[parts.length - 1].toLowerCase();
+            return ['glb', 'gltf'].includes(ext);
+          }
         }
         if (file.extname) {
-            const ext = file.extname.replace('.', '').toLowerCase();
-            return ['glb', 'gltf'].includes(ext);
+          const ext = file.extname.replace('.', '').toLowerCase();
+          return ['glb', 'gltf'].includes(ext);
         }
         return false;
       },
