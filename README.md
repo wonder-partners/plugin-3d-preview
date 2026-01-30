@@ -79,7 +79,7 @@ Move to the root directory of the Nocobase project:
 cd <project_name>
 ```
 
-> [!CAUTION]  
+> [!IMPORTANT]  
 > Make sure your Nocobase instance is running before installing and upgrading!
 
 ```bash
