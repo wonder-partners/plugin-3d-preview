@@ -51,9 +51,6 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
         <Button key="download" onClick={onDownload}>
           Download
         </Button>,
-        <Button key="close" onClick={onClose}>
-          Close
-        </Button>,
       ]}
       width={'85vw'}
       centered={true}
