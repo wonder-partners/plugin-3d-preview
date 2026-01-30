@@ -6,6 +6,8 @@ import '@google/model-viewer';
 
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
+  const modelRef = React.useRef<HTMLDivElement>(null);
+
   const url = useMemo(() => {
     const src =
       file.url.startsWith('https://') || file.url.startsWith('http://')
@@ -22,6 +24,17 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
     },
     [file.extname, file.title, file.url],
   );
+
+  const onFullscreen = useCallback(() => {
+    if (modelRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        modelRef.current.requestFullscreen();
+      }
+    }
+  }, []);
+
   const onClose = useCallback(() => {
     onSwitchIndex(null);
   }, [onSwitchIndex]);
@@ -32,6 +45,9 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
       title={file.title}
       onCancel={onClose}
       footer={[
+        <Button key="fullscreen" onClick={onFullscreen}>
+          Fullscreen
+        </Button>,
         <Button key="download" onClick={onDownload}>
           Download
         </Button>,
@@ -44,12 +60,14 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
       destroyOnClose
     >
       <div
+        ref={modelRef}
         style={{
           width: '100%',
           height: '80vh',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
+          backgroundColor: '#fff',
         }}
       >
         {/* @ts-ignore */}
