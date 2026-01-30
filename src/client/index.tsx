@@ -88,6 +88,31 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
   );
 }
 
+function GlbThumbnail({ file }) {
+  const url = useMemo(() => {
+    const src =
+      file.url.startsWith('https://') || file.url.startsWith('http://')
+        ? file.url
+        : `${location.origin}/${file.url.replace(/^\//, '')}`;
+    return src;
+  }, [file.url]);
+
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* @ts-ignore */}
+      <model-viewer
+        src={url}
+        alt={file.title}
+        auto-rotate
+        rotation-per-second="30deg"
+        interaction-prompt="none"
+        disable-zoom
+        style={{ width: '100%', height: '100%' }}
+      />
+    </div>
+  );
+}
+
 export class Plugin3dPreviewClient extends Plugin {
   async afterAdd() { }
 
@@ -113,6 +138,7 @@ export class Plugin3dPreviewClient extends Plugin {
         return false;
       },
       Previewer: GlbPreviewer,
+      ThumbnailPreviewer: GlbThumbnail,
     });
   }
 }
