@@ -3,6 +3,7 @@ import { Modal, Button } from 'antd';
 import { saveAs } from 'file-saver';
 import { Plugin, attachmentFileTypes } from '@nocobase/client';
 import '@google/model-viewer';
+import '@google/model-viewer-effects';
 
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
@@ -67,7 +68,6 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
           backgroundColor: '#fff',
         }}
       >
-        {/* @ts-ignore */}
         <model-viewer
           src={url}
           alt={file.title}
@@ -79,7 +79,12 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
           exposure="1"
           shadow-softness="1"
           style={{ width: '100%', height: '100%' }}
-        />
+        >
+          <effect-composer>
+            <ssao-effect></ssao-effect>
+            <smaa-effect></smaa-effect>
+          </effect-composer>
+        </model-viewer>
       </div>
     </Modal>
   );
@@ -96,7 +101,6 @@ function GlbThumbnail({ file }) {
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {/* @ts-ignore */}
       <model-viewer
         src={url}
         alt={file.title}
