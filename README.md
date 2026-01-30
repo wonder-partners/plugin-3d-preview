@@ -35,10 +35,6 @@ cd <project_name>
 
 #### 1.2. Install dependencies
 
-```bash
-yarn install
-```
-
 Install the sqlite driver explicitly in the workspace:
 
 ```bash
@@ -77,6 +73,12 @@ git clone https://github.com/wonder/plugin-hello.git
 
 #### 2.3. Upgrade Nocobase
 
+Move to the root directory of the Nocobase project:
+
+```bash
+cd <project_name>
+```
+
 > [!CAUTION]  
 > Make sure your Nocobase instance is running before installing and upgrading!
 
@@ -88,17 +90,15 @@ yarn install
 yarn nocobase upgrade
 ```
 
-Your plugin should now be available in the Nocobase UI under `/admin/pm/list/local/`.
-
-### 3. Make changes to the plugin
-
-Make your changes, when you need to test them, run:
+Restart the Nocobase instance:
 
 ```bash
-yarn nocobase upgrade
+yarn dev
 ```
 
-### 4. Build the plugin
+Your plugin should now be available to enable in the Nocobase UI under `/admin/pm/list/local/`.
+
+### 3. Build the plugin
 
 In the root directory of the plugin, run:
 
