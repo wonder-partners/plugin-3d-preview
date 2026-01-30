@@ -1,14 +1,11 @@
 import { Plugin } from '@nocobase/server';
 
-export class PluginHelloServer extends Plugin {
+export class Plugin3dPreviewServer extends Plugin {
   async afterAdd() {}
 
   async beforeLoad() {}
 
-  async load() {
-    // This is just an example. Expose all actions of the hello collection to the public
-    this.app.acl.allow('hello', '*', 'public');
-  }
+  async load() {}
 
   async install() {}
 
@@ -19,4 +16,4 @@ export class PluginHelloServer extends Plugin {
   async remove() {}
 }
 
-export default PluginHelloServer;
+export default Plugin3dPreviewServer;
