@@ -11,8 +11,9 @@ To start contributing to this plugin, follow these steps:
 
 > [!NOTE]  
 > You can install Yarn using npm by running `npm install -g yarn`.
+
 > [!IMPORTANT]  
-> Make sure you run all commands in an admin user shell.
+> Make sure you run all commands in an admin shell.
 
 ### 1. Create a Nocobase development instance
 
@@ -25,9 +26,6 @@ yarn create nocobase-app <project_name> -d sqlite
 ```
 
 This will create a new Nocobase project in the `<project_name>` directory with SQLite as the database.
-
-> [!WARNING]  
-> SQLite is only recommended for development and testing purposes.
 
 Change directory to the project:
 
