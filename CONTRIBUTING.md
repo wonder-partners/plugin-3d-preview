@@ -108,3 +108,7 @@ yarn build @<scope>/<plugin_name> --tar
 The tarball will be created at `storage/tar/@<scope>/<plugin_name>.tar.gz`.
 
 For more information, see [Nocobase documentation](https://www.nocobase.com/en/blog/simplify-the-process-of-adding-and-updating-plugins) on how to build and install plugins.
+
+## License
+
+By contributing to this project, you agree that your contributions will be licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE).

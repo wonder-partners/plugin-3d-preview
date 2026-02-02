@@ -1,6 +1,7 @@
 {
   "name": "@wonder/plugin-3d-preview",
   "version": "0.1.0",
+  "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "devDependencies": {
     "@google/model-viewer": "^4.1.0",
