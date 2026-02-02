@@ -26,6 +26,8 @@ This plugin integrates **Google Model Viewer** into NocoBase's file management s
 
 ### From tarball (Production)
 
+Go to the [releases](https://github.com/wonder-partners/plugin-3d-preview/releases) page and download the latest release.
+
 ```bash
 # Build the plugin
 yarn build @wonder/plugin-3d-preview --tar
