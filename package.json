@@ -1,6 +1,8 @@
 {
   "name": "@wonder/plugin-3d-preview",
-  "version": "0.1.0",
+  "displayName": "GLB File Previewer",
+  "description": "A NocoBase plugin for previewing 3D files in GLB/GLTF format.",
+  "version": "1.0.0",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "devDependencies": {
@@ -12,5 +14,12 @@
     "@nocobase/client": "1.x",
     "@nocobase/server": "1.x",
     "@nocobase/test": "1.x"
-  }
+  },
+  "keywords": [
+    "File Manager",
+    "Collection Fields",
+    "Attachment Fields",
+    "GLB",
+    "GLTF"
+  ]
 }
