@@ -18,8 +18,12 @@ declare global {
         'disable-zoom'?: boolean;
       };
       'effect-composer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      'ssao-effect': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      'smaa-effect': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+      'ssao-effect': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        strength?: number | 2;
+      };
+      'smaa-effect': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        quality?: 'low' | 'medium' | 'high' | 'ultra';
+      };
     }
   }
 }

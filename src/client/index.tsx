@@ -82,7 +82,7 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
         >
           <effect-composer>
             <ssao-effect></ssao-effect>
-            <smaa-effect></smaa-effect>
+            <smaa-effect quality="high"></smaa-effect>
           </effect-composer>
         </model-viewer>
       </div>

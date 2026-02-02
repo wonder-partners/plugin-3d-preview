@@ -1,10 +1,6 @@
-# @wonder/plugin-hello
+# @wonder/plugin-3d-preview
 
-## How to contribute
-
-To start contributing to this plugin, follow these steps:
-
-### 0. Prerequisites
+## 0. Prerequisites
 
 - Node.js 18.16.0 or higher
 - Yarn 1.22.19 or higher
@@ -15,9 +11,9 @@ To start contributing to this plugin, follow these steps:
 > [!IMPORTANT]  
 > Make sure you run all commands in an admin shell.
 
-### 1. Create a Nocobase development instance
+## 1. Create a Nocobase development instance
 
-#### 1.1. Create a new Nocobase project
+### 1.1. Create a new Nocobase project
 
 Use the Nocobase CLI:
 
@@ -33,7 +29,7 @@ Change directory to the project:
 cd <project_name>
 ```
 
-#### 1.2. Install dependencies
+### 1.2. Install dependencies
 
 Install the sqlite driver explicitly in the workspace:
 
@@ -47,7 +43,7 @@ yarn nocobase install
 
 This will install all dependencies and prepare the Nocobase instance.
 
-#### 1.3. Run the Nocobase instance
+### 1.3. Run the Nocobase instance
 
 ```bash
 yarn dev
@@ -56,22 +52,22 @@ yarn dev
 > [!NOTE]  
 > The Nocobase instance will be accessible at `http://localhost:13000`. The default username and password are `admin@nocobase.com` and `admin123`.
 
-### 2. Add the plugin to your development environment
+## 2. Add the plugin to your development environment
 
-#### 2.1. Create the folder
+### 2.1. Create the folder
 
 ```bash
 mkdir -p packages/plugins/@wonder
 cd packages/plugins/@wonder
 ```
 
-#### 2.2. Clone the repository
+### 2.2. Clone the repository
 
 ```bash
 git clone https://github.com/wonder/plugin-hello.git
 ```
 
-#### 2.3. Upgrade Nocobase
+### 2.3. Upgrade Nocobase
 
 Move to the root directory of the Nocobase project:
 
@@ -98,7 +94,10 @@ yarn dev
 
 Your plugin should now be available to enable in the Nocobase UI under `/admin/pm/list/local/`.
 
-### 3. Build the plugin
+## 3. Build the plugin
+
+> [!NOTE]  
+> If you cloned the Nocobase source code, execute `yarn build` in the root directory for a full build.
 
 In the root directory of the plugin, run:
 
