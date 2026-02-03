@@ -4,6 +4,7 @@ import { saveAs } from 'file-saver';
 import { Plugin, attachmentFileTypes } from '@nocobase/client';
 import '@google/model-viewer';
 import '@google/model-viewer-effects';
+import '@wonder-partners/model-viewer-stats';
 
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
@@ -84,6 +85,7 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
             <ssao-effect></ssao-effect>
             <smaa-effect quality="high"></smaa-effect>
           </effect-composer>
+          <model-stats></model-stats>
         </model-viewer>
       </div>
     </Modal>
