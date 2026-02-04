@@ -30,7 +30,7 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
     if (statsElement && !statsVisible) {
       statsElement.toggle();
     }
-  });
+  }, []);
 
   const onDownload = useCallback(
     (e) => {
