@@ -1,20 +1,14 @@
 # @wonder/plugin-3d-preview
 
-A NocoBase plugin for previewing 3D files in GLB/GLTF format with advanced visual effects.
-
-## Overview
-
-This plugin integrates **Google Model Viewer** into NocoBase's file management system, enabling interactive 3D model previewing with visual effects including SSAO (ambient occlusion) and SMAA (anti-aliasing).
+A NocoBase plugin for previewing 3D files (GLB/GLTF) with advanced visual effects and performance monitoring.
 
 ## Features
 
-- Interactive 3D preview for GLB and GLTF files
-- Camera controls (rotate, zoom, pan)
-- Auto-rotate mode
-- Fullscreen viewing
-- Advanced visual effects (SSAO, SMAA, AGX tone mapping)
-- Custom thumbnails with auto-rotation
-- Download functionality
+- Interactive 3D preview with camera controls (rotate, zoom, pan)
+- Visual effects: SSAO, SMAA, AGX tone mapping
+- Real-time statistics panel (geometry, textures, FPS)
+- Fullscreen mode and download functionality
+- Animated thumbnails with auto-rotation
 
 ## Prerequisites
 
@@ -61,53 +55,37 @@ see [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup instructions.
 ## Usage
 
 1. Upload a `.glb` or `.gltf` file to any attachment field
-2. Click the thumbnail to open the interactive preview
-3. Use mouse controls:
-   - Left-click + drag: Rotate
-   - Right-click + drag: Pan
-   - Scroll: Zoom
-   - Fullscreen button: Toggle fullscreen mode
-   - Download button: Download the file
+2. Click the thumbnail to open the preview
+3. Mouse controls: Left-drag (rotate), Right-drag (pan), Scroll (zoom)
+4. Modal buttons: Statistics, Fullscreen, Download
+
+Statistics panel shows geometry, textures, FPS, and draw calls. Visibility preference is saved per user.
 
 ## Configuration
 
-Default Model Viewer settings:
+Default settings: FOV 30°, auto-rotate, AGX tone mapping, SSAO + SMAA effects.
 
-```typescript
-{
-  fieldOfView: "30deg",
-  autoRotate: true,
-  cameraControls: true,
-  shadowIntensity: 0.33,
-  toneMapping: "agx",
-  exposure: 1,
-  shadowSoftness: 1
-}
-```
-
-Visual effects applied automatically:
-
-- SSAO effect for depth perception
-- SMAA effect with high quality for smooth edges
-
-To customize, edit `src/client/index.tsx`. See [Model Viewer documentation](https://modelviewer.dev/) for all available options.
+To customize, edit `src/client/index.tsx`. See [Model Viewer docs](https://modelviewer.dev/) for options.
 
 ## Dependencies
 
-```json
-{
-  "@google/model-viewer": "^4.1.0",
-  "@google/model-viewer-effects": "^1.5.0",
-  "three": "^0.182.0"
-}
-```
+- `@google/model-viewer` ^4.1.0
+- `@google/model-viewer-effects` ^1.5.0
+- `@wonder-partners/model-viewer-stats` ^1.0.4
+- `three` ^0.182.0
+
+## Version History
+
+**v1.1.1** - Fix click event handling
+**v1.1.0** - Statistics panel with user preferences
+**v1.0.0** - Initial release
 
 ## License
 
-This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE).
+[AGPL-3.0](./LICENSE)
 
 ## Resources
 
-- [NocoBase Documentation](https://docs.nocobase.com/)
-- [Google Model Viewer](https://modelviewer.dev/)
-- [Model Viewer Effects](https://www.npmjs.com/package/@google/model-viewer-effects)
+- [NocoBase Docs](https://docs.nocobase.com/)
+- [Model Viewer](https://modelviewer.dev/)
+- [Contributing](./CONTRIBUTING.md)
