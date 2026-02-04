@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
-import { Modal, Button } from 'antd';
+import { Button, Modal } from 'antd';
 import { saveAs } from 'file-saver';
-import { Plugin, attachmentFileTypes } from '@nocobase/client';
+import { attachmentFileTypes, Plugin } from '@nocobase/client';
 import '@google/model-viewer';
 import '@google/model-viewer-effects';
 import '@wonder-partners/model-viewer-stats';
@@ -9,6 +9,7 @@ import '@wonder-partners/model-viewer-stats';
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
   const modelRef = React.useRef<HTMLDivElement>(null);
+  const statsRef = React.useRef<any>(null);
 
   const url = useMemo(() => {
     const src =
@@ -37,6 +38,12 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
     }
   }, []);
 
+  const onToggleStats = useCallback(() => {
+    if (statsRef.current && typeof statsRef.current.toggle === 'function') {
+      statsRef.current.toggle();
+    }
+  }, []);
+
   const onClose = useCallback(() => {
     onSwitchIndex(null);
   }, [onSwitchIndex]);
@@ -47,6 +54,9 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
       title={file.title}
       onCancel={onClose}
       footer={[
+        <Button key="stats" onClick={onToggleStats}>
+          Statistics
+        </Button>,
         <Button key="fullscreen" onClick={onFullscreen}>
           Fullscreen
         </Button>,
@@ -85,7 +95,7 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
             <ssao-effect></ssao-effect>
             <smaa-effect quality="high"></smaa-effect>
           </effect-composer>
-          <model-stats></model-stats>
+          <model-stats ref={statsRef}></model-stats>
         </model-viewer>
       </div>
     </Modal>
@@ -102,7 +112,15 @@ function GlbThumbnail({ file }) {
   }, [file.url]);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <model-viewer
         src={url}
         alt={file.title}
@@ -117,9 +135,9 @@ function GlbThumbnail({ file }) {
 }
 
 export class Plugin3dPreviewClient extends Plugin {
-  async afterAdd() { }
+  async afterAdd() {}
 
-  async beforeLoad() { }
+  async beforeLoad() {}
 
   async load() {
     attachmentFileTypes.add({
@@ -127,17 +145,21 @@ export class Plugin3dPreviewClient extends Plugin {
         if (file.mimetype && ['model/gltf-binary', 'model/gltf+json'].includes(file.mimetype)) {
           return true;
         }
+
         if (file.url) {
           const parts = file.url.split('.');
+
           if (parts.length > 1) {
             const ext = parts[parts.length - 1].toLowerCase();
             return ['glb', 'gltf'].includes(ext);
           }
         }
+
         if (file.extname) {
           const ext = file.extname.replace('.', '').toLowerCase();
           return ['glb', 'gltf'].includes(ext);
         }
+
         return false;
       },
       Previewer: GlbPreviewer,
