@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Modal } from 'antd';
 import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin } from '@nocobase/client';
@@ -6,10 +6,16 @@ import '@google/model-viewer';
 import '@google/model-viewer-effects';
 import '@wonder-partners/model-viewer-stats';
 
+const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
+
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
-  const modelRef = React.useRef<HTMLDivElement>(null);
-  const statsRef = React.useRef<any>(null);
+  const modelRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<any>(null);
+  const [statsVisible, setStatsVisible] = useState(() => {
+    const stored = localStorage.getItem(STATS_VISIBLE_KEY);
+    return stored === null ? true : stored === 'true';
+  });
 
   const url = useMemo(() => {
     const src =
@@ -18,6 +24,13 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
         : `${location.origin}/${file.url.replace(/^\//, '')}`;
     return src;
   }, [file.url]);
+
+  useEffect(() => {
+    const statsElement = statsRef.current;
+    if (statsElement && !statsVisible) {
+      statsElement.toggle();
+    }
+  });
 
   const onDownload = useCallback(
     (e) => {
@@ -41,8 +54,11 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
   const onToggleStats = useCallback(() => {
     if (statsRef.current && typeof statsRef.current.toggle === 'function') {
       statsRef.current.toggle();
+      const newValue = !statsVisible;
+      localStorage.setItem(STATS_VISIBLE_KEY, String(newValue));
+      setStatsVisible(newValue);
     }
-  }, []);
+  }, [statsVisible]);
 
   const onClose = useCallback(() => {
     onSwitchIndex(null);
