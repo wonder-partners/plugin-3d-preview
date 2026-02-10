@@ -6,6 +6,7 @@ A NocoBase plugin for previewing 3D files (GLB/GLTF) with advanced visual effect
 
 - Interactive 3D preview with camera controls (rotate, zoom, pan)
 - Visual effects: SSAO, SMAA, AGX tone mapping
+- Image-based lighting via `environment-image` (preview + thumbnail)
 - Real-time statistics panel (geometry, textures, FPS)
 - Fullscreen mode and download functionality
 - Animated thumbnails with auto-rotation
@@ -64,6 +65,14 @@ Statistics panel shows geometry, textures, FPS, and draw calls. Visibility prefe
 ## Configuration
 
 Default settings: FOV 30°, auto-rotate, AGX tone mapping, SSAO + SMAA effects.
+
+### Environment image (no skybox)
+
+The plugin is configured to use a local environment image for lighting/reflections on both the main preview and thumbnails:
+
+- Asset: `src/client/assets/studio_kontrast.jpg`
+- Applied in `src/client/index.tsx` with `environment-image={studioEnv}`
+- No `skybox-image` is set (background is not forced by a skybox)
 
 To customize, edit `src/client/index.tsx`. See [Model Viewer docs](https://modelviewer.dev/) for options.
 

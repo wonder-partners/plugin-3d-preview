@@ -13,6 +13,7 @@ declare global {
         'tone-mapping'?: string;
         exposure?: string;
         'shadow-softness'?: string;
+        'environment-image'?: string;
         'rotation-per-second'?: string;
         'interaction-prompt'?: string;
         'disable-zoom'?: boolean;

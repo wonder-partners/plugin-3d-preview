@@ -5,6 +5,7 @@ import { attachmentFileTypes, Plugin } from '@nocobase/client';
 import '@google/model-viewer';
 import '@google/model-viewer-effects';
 import '@wonder-partners/model-viewer-stats';
+import studioEnv from './assets/studio_kontrast.jpg';
 
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
 
@@ -105,6 +106,7 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
           tone-mapping="agx"
           exposure="1"
           shadow-softness="1"
+          environment-image={studioEnv}
           style={{ width: '100%', height: '100%' }}
         >
           <effect-composer>
@@ -144,6 +146,7 @@ function GlbThumbnail({ file }) {
         rotation-per-second="30deg"
         interaction-prompt="none"
         disable-zoom
+        environment-image={studioEnv}
         style={{ width: '100%', height: '100%' }}
       />
     </div>
