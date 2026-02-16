@@ -5,9 +5,10 @@ import { attachmentFileTypes, Plugin } from '@nocobase/client';
 import '@google/model-viewer';
 import '@google/model-viewer-effects';
 import '@wonder-partners/model-viewer-stats';
-import studioEnv from './assets/studio_kontrast.jpg';
+import neutralEnv from './assets/env_neutral.jpg';
 
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
+const EXPOSURE = 0.9;
 
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
@@ -100,19 +101,20 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
           src={url}
           alt={file.title}
           field-of-view="30deg"
-          auto-rotate
           camera-controls
           shadow-intensity="0.33"
           tone-mapping="agx"
-          exposure="1"
+          exposure={EXPOSURE.toString()}
           shadow-softness="1"
-          environment-image={studioEnv}
+          environment-image={neutralEnv}
           style={{ width: '100%', height: '100%' }}
         >
+          {/* 
           <effect-composer>
             <ssao-effect></ssao-effect>
             <smaa-effect quality="high"></smaa-effect>
-          </effect-composer>
+          </effect-composer> 
+          */}
           <model-stats ref={statsRef}></model-stats>
         </model-viewer>
       </div>
@@ -146,7 +148,9 @@ function GlbThumbnail({ file }) {
         rotation-per-second="30deg"
         interaction-prompt="none"
         disable-zoom
-        environment-image={studioEnv}
+        environment-image={neutralEnv}
+        tone-mapping="agx"
+        exposure={EXPOSURE.toString()}
         style={{ width: '100%', height: '100%' }}
       />
     </div>
