@@ -2,13 +2,13 @@
   "name": "@wonder/plugin-3d-preview",
   "displayName": "GLB File Previewer",
   "description": "A NocoBase plugin for previewing 3D files in GLB/GLTF format.",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "license": "AGPL-3.0",
   "main": "dist/server/index.js",
   "devDependencies": {
     "@google/model-viewer": "^4.1.0",
     "@google/model-viewer-effects": "^1.5.0",
-    "@wonder-partners/model-viewer-stats": "^1.0.7",
+    "@wonder-partners/model-viewer-stats": "^1.0.9",
     "three": "^0.182.0"
   },
   "peerDependencies": {
