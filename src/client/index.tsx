@@ -8,7 +8,6 @@ import '@wonder-partners/model-viewer-stats';
 import neutralEnv from './assets/env_neutral.jpg';
 
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
-const EXPOSURE = 0.9;
 
 function GlbPreviewer({ index, list, onSwitchIndex }) {
   const file = list[index];
@@ -102,10 +101,7 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
           alt={file.title}
           field-of-view="30deg"
           camera-controls
-          shadow-intensity="0.33"
           tone-mapping="agx"
-          exposure={EXPOSURE.toString()}
-          shadow-softness="1"
           environment-image={neutralEnv}
           style={{ width: '100%', height: '100%' }}
         >
@@ -150,7 +146,6 @@ function GlbThumbnail({ file }) {
         disable-zoom
         environment-image={neutralEnv}
         tone-mapping="agx"
-        exposure={EXPOSURE.toString()}
         style={{ width: '100%', height: '100%' }}
       />
     </div>
