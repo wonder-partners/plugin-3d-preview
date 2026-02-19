@@ -3,28 +3,94 @@ import { Button, Modal } from 'antd';
 import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin } from '@nocobase/client';
 import '@google/model-viewer';
-import '@google/model-viewer-effects';
 import '@wonder-partners/model-viewer-stats';
 import neutralEnv from './assets/env_neutral.jpg';
 
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
 
-function GlbPreviewer({ index, list, onSwitchIndex }) {
-  const file = list[index];
-  const modelRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<any>(null);
-  const [statsVisible, setStatsVisible] = useState(() => {
-    const stored = localStorage.getItem(STATS_VISIBLE_KEY);
-    return stored === null ? true : stored === 'true';
-  });
+type File = {
+  url: string;
+  title: string;
+  extname?: string;
+  mimetype?: string;
+};
 
-  const url = useMemo(() => {
+type PreviewerProps = {
+  index: number;
+  list: File[];
+  onSwitchIndex: (index: number | null) => void;
+};
+
+type ThumbnailProps = {
+  file: File;
+};
+
+type ModelViewerProps = {
+  url: string;
+  title: string;
+  viewerRef?: React.Ref<HTMLElement>;
+  fieldOfView?: string;
+  cameraControls?: boolean;
+  autoRotate?: boolean;
+  rotationPerSecond?: string;
+  interactionPrompt?: string;
+  disableZoom?: boolean;
+  children?: React.ReactNode;
+};
+
+function useModelUrl(file: File) {
+  return useMemo(() => {
     const src =
       file.url.startsWith('https://') || file.url.startsWith('http://')
         ? file.url
         : `${location.origin}/${file.url.replace(/^\//, '')}`;
     return src;
   }, [file.url]);
+}
+
+function ModelViewer({
+  url,
+  title,
+  viewerRef,
+  fieldOfView,
+  cameraControls,
+  autoRotate,
+  rotationPerSecond,
+  interactionPrompt,
+  disableZoom,
+  children,
+}: ModelViewerProps) {
+  return (
+    <model-viewer
+      ref={viewerRef}
+      src={url}
+      alt={title}
+      field-of-view={fieldOfView}
+      camera-controls={cameraControls}
+      auto-rotate={autoRotate}
+      rotation-per-second={rotationPerSecond}
+      interaction-prompt={interactionPrompt}
+      disable-zoom={disableZoom}
+      tone-mapping="agx"
+      environment-image={neutralEnv}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {children}
+    </model-viewer>
+  );
+}
+
+function Previewer({ index, list, onSwitchIndex }: PreviewerProps) {
+  const file = list[index];
+  const modelRef = useRef<HTMLDivElement>(null);
+  const modelViewerRef = useRef<any>(null);
+  const statsRef = useRef<any>(null);
+  const [statsVisible, setStatsVisible] = useState(() => {
+    const stored = localStorage.getItem(STATS_VISIBLE_KEY);
+    return stored === null ? true : stored === 'true';
+  });
+
+  const url = useModelUrl(file);
 
   useEffect(() => {
     const statsElement = statsRef.current;
@@ -32,6 +98,33 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
       statsElement.toggle();
     }
   }, []);
+
+  useEffect(() => {
+    const viewer = modelViewerRef.current;
+    if (!viewer) {
+      return;
+    }
+
+    const handleLoad = () => {
+      const toneMapping = viewer.getAttribute('tone-mapping');
+      if (!toneMapping) {
+        return;
+      }
+
+      // Monkey-patch the tone-mapping attribute to force a re-render.
+      // This is a workaround for an currently unkown bug that causes the
+      // attribute to not be applied correctly on the first render.
+      // We explicitly replay the attribute mutation after load to ensure
+      // that the attribute is applied correctly.
+      viewer.removeAttribute('tone-mapping');
+      requestAnimationFrame(() => {
+        viewer.setAttribute('tone-mapping', toneMapping);
+      });
+    };
+
+    viewer.addEventListener('load', handleLoad);
+    return () => viewer.removeEventListener('load', handleLoad);
+  }, [url]);
 
   const onDownload = useCallback(
     (e) => {
@@ -96,36 +189,22 @@ function GlbPreviewer({ index, list, onSwitchIndex }) {
           backgroundColor: '#fff',
         }}
       >
-        <model-viewer
-          src={url}
-          alt={file.title}
-          field-of-view="30deg"
-          camera-controls
-          tone-mapping="agx"
-          environment-image={neutralEnv}
-          style={{ width: '100%', height: '100%' }}
+        <ModelViewer
+          url={url}
+          title={file.title}
+          viewerRef={modelViewerRef}
+          fieldOfView="30deg"
+          cameraControls
         >
-          {/* 
-          <effect-composer>
-            <ssao-effect></ssao-effect>
-            <smaa-effect quality="high"></smaa-effect>
-          </effect-composer> 
-          */}
           <model-stats ref={statsRef}></model-stats>
-        </model-viewer>
+        </ModelViewer>
       </div>
     </Modal>
   );
 }
 
-function GlbThumbnail({ file }) {
-  const url = useMemo(() => {
-    const src =
-      file.url.startsWith('https://') || file.url.startsWith('http://')
-        ? file.url
-        : `${location.origin}/${file.url.replace(/^\//, '')}`;
-    return src;
-  }, [file.url]);
+function ThumbnailPreviewer({ file }: ThumbnailProps) {
+  const url = useModelUrl(file);
 
   return (
     <div
@@ -137,25 +216,22 @@ function GlbThumbnail({ file }) {
         justifyContent: 'center',
       }}
     >
-      <model-viewer
-        src={url}
-        alt={file.title}
-        auto-rotate
-        rotation-per-second="30deg"
-        interaction-prompt="none"
-        disable-zoom
-        environment-image={neutralEnv}
-        tone-mapping="agx"
-        style={{ width: '100%', height: '100%' }}
+      <ModelViewer
+        url={url}
+        title={file.title}
+        autoRotate
+        rotationPerSecond="30deg"
+        interactionPrompt="none"
+        disableZoom
       />
     </div>
   );
 }
 
 export class Plugin3dPreviewClient extends Plugin {
-  async afterAdd() {}
+  async afterAdd() { }
 
-  async beforeLoad() {}
+  async beforeLoad() { }
 
   async load() {
     attachmentFileTypes.add({
@@ -180,8 +256,8 @@ export class Plugin3dPreviewClient extends Plugin {
 
         return false;
       },
-      Previewer: GlbPreviewer,
-      ThumbnailPreviewer: GlbThumbnail,
+      Previewer,
+      ThumbnailPreviewer,
     });
   }
 }
