@@ -35,8 +35,21 @@ type ModelViewerProps = {
   rotationPerSecond?: string;
   interactionPrompt?: string;
   disableZoom?: boolean;
+  toneMapping?: string;
   children?: React.ReactNode;
 };
+
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
+  if (!ref) {
+    return;
+  }
+
+  if (typeof ref === 'function') {
+    ref(value);
+  } else {
+    (ref as React.MutableRefObject<T | null>).current = value;
+  }
+}
 
 function useModelUrl(file: File) {
   return useMemo(() => {
@@ -58,11 +71,46 @@ function ModelViewer({
   rotationPerSecond,
   interactionPrompt,
   disableZoom,
+  toneMapping,
   children,
 }: ModelViewerProps) {
+  const internalViewerRef = useRef<HTMLElement | null>(null);
+
+  const setViewerRef = useCallback(
+    (node: HTMLElement | null) => {
+      internalViewerRef.current = node;
+      assignRef(viewerRef, node);
+    },
+    [viewerRef],
+  );
+
+  useEffect(() => {
+    const viewer = internalViewerRef.current;
+    if (!viewer) {
+      return;
+    }
+
+    const handleLoad = () => {
+      const toneMapping = viewer.getAttribute('tone-mapping');
+      if (!toneMapping) {
+        return;
+      }
+
+      // Replay the tone-mapping attribute mutation after load
+      // to force correct application on the initial render.
+      viewer.removeAttribute('tone-mapping');
+      requestAnimationFrame(() => {
+        viewer.setAttribute('tone-mapping', toneMapping);
+      });
+    };
+
+    viewer.addEventListener('load', handleLoad);
+    return () => viewer.removeEventListener('load', handleLoad);
+  }, [url]);
+
   return (
     <model-viewer
-      ref={viewerRef}
+      ref={setViewerRef}
       src={url}
       alt={title}
       field-of-view={fieldOfView}
@@ -71,7 +119,7 @@ function ModelViewer({
       rotation-per-second={rotationPerSecond}
       interaction-prompt={interactionPrompt}
       disable-zoom={disableZoom}
-      tone-mapping="agx"
+      tone-mapping={toneMapping}
       environment-image={neutralEnv}
       style={{ width: '100%', height: '100%' }}
     >
@@ -98,33 +146,6 @@ function Previewer({ index, list, onSwitchIndex }: PreviewerProps) {
       statsElement.toggle();
     }
   }, []);
-
-  useEffect(() => {
-    const viewer = modelViewerRef.current;
-    if (!viewer) {
-      return;
-    }
-
-    const handleLoad = () => {
-      const toneMapping = viewer.getAttribute('tone-mapping');
-      if (!toneMapping) {
-        return;
-      }
-
-      // Monkey-patch the tone-mapping attribute to force a re-render.
-      // This is a workaround for an currently unkown bug that causes the
-      // attribute to not be applied correctly on the first render.
-      // We explicitly replay the attribute mutation after load to ensure
-      // that the attribute is applied correctly.
-      viewer.removeAttribute('tone-mapping');
-      requestAnimationFrame(() => {
-        viewer.setAttribute('tone-mapping', toneMapping);
-      });
-    };
-
-    viewer.addEventListener('load', handleLoad);
-    return () => viewer.removeEventListener('load', handleLoad);
-  }, [url]);
 
   const onDownload = useCallback(
     (e) => {
@@ -195,6 +216,7 @@ function Previewer({ index, list, onSwitchIndex }: PreviewerProps) {
           viewerRef={modelViewerRef}
           fieldOfView="30deg"
           cameraControls
+          toneMapping="aces"
         >
           <model-stats ref={statsRef}></model-stats>
         </ModelViewer>
@@ -223,6 +245,7 @@ function ThumbnailPreviewer({ file }: ThumbnailProps) {
         rotationPerSecond="30deg"
         interactionPrompt="none"
         disableZoom
+        toneMapping="aces"
       />
     </div>
   );

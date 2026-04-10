@@ -1,5 +1,9 @@
 import React from 'react';
 
+interface ModelStatsElement extends HTMLElement {
+  toggle?: () => void;
+}
+
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -18,6 +22,7 @@ declare global {
         'interaction-prompt'?: string;
         'disable-zoom'?: boolean;
       };
+      'model-stats': React.DetailedHTMLProps<React.HTMLAttributes<ModelStatsElement>, ModelStatsElement>;
       'effect-composer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
       'ssao-effect': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         strength?: number | 2;
