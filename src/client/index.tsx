@@ -365,6 +365,9 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
       title="Environment map"
       onCancel={onClose}
       footer={[
+        <Upload key="upload" accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
+          <Button loading={uploading}>Upload environment map</Button>
+        </Upload>,
         <Button key="reset" onClick={() => saveEnvironmentMap(null)} loading={saving}>
           Reset to default
         </Button>,
@@ -404,9 +407,6 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
           }))}
           style={{ width: '100%' }}
         />
-        <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
-          <Button loading={uploading}>Upload environment map</Button>
-        </Upload>
       </Space>
     </Modal>
   );
