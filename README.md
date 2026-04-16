@@ -66,13 +66,17 @@ Statistics panel shows geometry, textures, FPS, and draw calls. Visibility prefe
 
 Default settings: FOV 30°, auto-rotate, AGX tone mapping, SSAO + SMAA effects.
 
-### Environment maps
+### HDRI management
 
-Environment maps are configured per 3D file from uploaded NocoBase attachments. The selected map is stored on the server and is shared by all users who preview the same file.
+Environment maps are configured per 3D file from HDRI records stored in the `plugin3dPreviewEnvironmentMaps` collection. The selected map is stored on the server and is shared by all users who preview the same file.
 
 Supported uploaded format: `.hdr`.
 
-Changing the environment map uses the `pm.plugin-3d-preview.environmentMaps` permission snippet. Grant it to roles that should manage shared per-file lighting.
+Connected users can manage HDRI records from the 3D preview environment maps settings page or the direct `/admin/plugin-3d-preview/environment-maps` route. The management page lets users upload, preview, download, and delete HDRI files.
+
+HDRI files are stored as standard NocoBase attachments, but only records in `plugin3dPreviewEnvironmentMaps` are offered by the 3D preview picker. Existing `.hdr` attachments uploaded before this development version are not imported automatically.
+
+Deleting an HDRI record deletes the linked attachment and resets any 3D files that used it back to the default `<model-viewer>` environment behavior.
 
 When no environment map is configured for a file, the plugin does not set the `environment-image` attribute and `<model-viewer>` uses its default behavior. See [Model Viewer docs](https://modelviewer.dev/) for details.
 

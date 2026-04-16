@@ -30,20 +30,32 @@ function serializeAttachment(file: any) {
     filename: data.filename,
     extname: data.extname,
     mimetype: data.mimetype,
+    size: data.size,
     url: data.url,
   };
 }
 
-async function findAttachment(ctx: any, id: any) {
+function throwHttpError(status: number, message: string) {
+  const error: any = new Error(message);
+  error.status = status;
+  throw error;
+}
+
+async function findAttachmentById(db: any, id: any, transaction?: any) {
   if (id === null || id === undefined || id === '') {
     return null;
   }
 
-  return ctx.db.getRepository('attachments').findOne({
+  return db.getRepository('attachments').findOne({
     filter: {
       id,
     },
+    transaction,
   });
+}
+
+async function findAttachment(ctx: any, id: any) {
+  return findAttachmentById(ctx.db, id);
 }
 
 async function assertAttachmentExtension(ctx: any, id: any, extensions: string[], message: string) {
@@ -57,23 +69,26 @@ async function assertAttachmentExtension(ctx: any, id: any, extensions: string[]
 }
 
 export class Plugin3dPreviewServer extends Plugin {
-  settingsCollectionSync: Promise<boolean> | null = null;
+  collectionSyncs = new Map<string, Promise<boolean>>();
+  deletingEnvironmentMapAttachmentIds = new Set<string>();
 
   async afterAdd() {}
 
   async beforeLoad() {}
 
   async load() {
-    await this.ensureSettingsCollection();
+    await this.ensureCollection(FILE_SETTINGS_RESOURCE);
+    await this.ensureCollection(ENVIRONMENT_MAPS_RESOURCE);
     this.registerResources();
     this.registerAcl();
+    this.registerEnvironmentMapHooks();
     this.registerAttachmentCleanup();
   }
 
-  async ensureSettingsCollection() {
-    if (!this.settingsCollectionSync) {
-      this.settingsCollectionSync = (async () => {
-        const collection = this.db.getCollection(FILE_SETTINGS_RESOURCE);
+  async ensureCollection(name: string) {
+    if (!this.collectionSyncs.has(name)) {
+      const sync = (async () => {
+        const collection = this.db.getCollection(name);
 
         if (!collection) {
           return false;
@@ -88,16 +103,18 @@ export class Plugin3dPreviewServer extends Plugin {
 
         return true;
       })().catch((error) => {
-        this.settingsCollectionSync = null;
+        this.collectionSyncs.delete(name);
         throw error;
       });
+
+      this.collectionSyncs.set(name, sync);
     }
 
-    return this.settingsCollectionSync;
+    return this.collectionSyncs.get(name);
   }
 
-  async settingsCollectionExists(options?: any) {
-    const collection = this.db.getCollection(FILE_SETTINGS_RESOURCE);
+  async collectionExists(name: string, options?: any) {
+    const collection = this.db.getCollection(name);
     return collection ? collection.existsInDb(options) : false;
   }
 
@@ -109,27 +126,118 @@ export class Plugin3dPreviewServer extends Plugin {
         setForFile: this.setForFile.bind(this),
       },
     });
-
-    this.app.resourcer.define({
-      name: ENVIRONMENT_MAPS_RESOURCE,
-      actions: {
-        list: this.listEnvironmentMaps.bind(this),
-      },
-    });
   }
 
   registerAcl() {
     this.app.acl.allow(FILE_SETTINGS_RESOURCE, 'getForFile', 'loggedIn');
-    this.app.acl.allow(ENVIRONMENT_MAPS_RESOURCE, 'list', 'loggedIn');
+    this.app.acl.allow(FILE_SETTINGS_RESOURCE, 'setForFile', 'loggedIn');
+    this.app.acl.allow(ENVIRONMENT_MAPS_RESOURCE, ['list', 'get', 'create', 'update', 'destroy'], 'loggedIn');
     this.app.acl.registerSnippet({
       name: `pm.${this.name}.environmentMaps`,
-      actions: [`${FILE_SETTINGS_RESOURCE}:setForFile`],
+      actions: [`${FILE_SETTINGS_RESOURCE}:setForFile`, `${ENVIRONMENT_MAPS_RESOURCE}:*`],
+    });
+  }
+
+  registerEnvironmentMapHooks() {
+    const collection = this.db.getCollection(ENVIRONMENT_MAPS_RESOURCE);
+
+    if (!collection) {
+      return;
+    }
+
+    collection.model.removeHook?.('beforeCreate', 'plugin3dPreviewEnvironmentMaps.validateAttachment');
+    collection.model.removeHook?.('beforeUpdate', 'plugin3dPreviewEnvironmentMaps.validateAttachment');
+
+    collection.model.beforeCreate('plugin3dPreviewEnvironmentMaps.validateAttachment', async (record, options: any) => {
+      await this.assertHdrAttachmentId(record.get('attachmentId'), options?.transaction);
+    });
+
+    collection.model.beforeUpdate('plugin3dPreviewEnvironmentMaps.validateAttachment', async (record, options: any) => {
+      if (record.changed('attachmentId')) {
+        await this.assertHdrAttachmentId(record.get('attachmentId'), options?.transaction);
+      }
+    });
+  }
+
+  async assertHdrAttachmentId(attachmentId: any, transaction?: any) {
+    if (!attachmentId) {
+      throwHttpError(400, 'attachmentId is required');
+    }
+
+    const attachment = await findAttachmentById(this.db, attachmentId, transaction);
+
+    if (!attachment) {
+      throwHttpError(404, 'Attachment not found');
+    }
+
+    if (!ENVIRONMENT_MAP_EXTENSIONS.includes(getExtension(attachment))) {
+      throwHttpError(400, 'Only .hdr files can be used as environment maps');
+    }
+
+    return attachment;
+  }
+
+  async findEnvironmentMapRecordByAttachmentId(attachmentId: any, transaction?: any) {
+    if (!(await this.collectionExists(ENVIRONMENT_MAPS_RESOURCE, { transaction }))) {
+      return null;
+    }
+
+    return this.db.getRepository(ENVIRONMENT_MAPS_RESOURCE).findOne({
+      filter: {
+        attachmentId,
+      },
+      transaction,
+    });
+  }
+
+  async resetSettingsForEnvironmentMap(attachmentId: any, transaction?: any) {
+    if (!(await this.collectionExists(FILE_SETTINGS_RESOURCE, { transaction }))) {
+      return;
+    }
+
+    await this.db.getRepository(FILE_SETTINGS_RESOURCE).update({
+      filter: {
+        environmentMapId: attachmentId,
+      },
+      values: {
+        environmentMapId: null,
+      },
+      transaction,
     });
   }
 
   registerAttachmentCleanup() {
     this.db.on('afterDestroy', async (record, options: any = {}) => {
       const collection = record?.constructor?.collection;
+
+      if (collection?.name === ENVIRONMENT_MAPS_RESOURCE) {
+        const attachmentId = record.get('attachmentId');
+
+        await this.resetSettingsForEnvironmentMap(attachmentId, options.transaction);
+
+        if (this.deletingEnvironmentMapAttachmentIds.has(String(attachmentId))) {
+          return;
+        }
+
+        const attachment = await findAttachmentById(this.db, attachmentId, options.transaction);
+
+        if (!attachment) {
+          return;
+        }
+
+        this.deletingEnvironmentMapAttachmentIds.add(String(attachmentId));
+
+        try {
+          await this.db.getRepository('attachments').destroy({
+            filterByTk: attachmentId,
+            transaction: options.transaction,
+          });
+        } finally {
+          this.deletingEnvironmentMapAttachmentIds.delete(String(attachmentId));
+        }
+
+        return;
+      }
 
       if (collection?.name !== 'attachments') {
         return;
@@ -138,28 +246,42 @@ export class Plugin3dPreviewServer extends Plugin {
       const attachmentId = record.get('id');
 
       if (
-        !(await this.settingsCollectionExists({
+        await this.collectionExists(FILE_SETTINGS_RESOURCE, {
+          transaction: options.transaction,
+        })
+      ) {
+        const repository = this.db.getRepository(FILE_SETTINGS_RESOURCE);
+
+        await repository.destroy({
+          filter: {
+            fileId: attachmentId,
+          },
+          transaction: options.transaction,
+        });
+
+        await repository.update({
+          filter: {
+            environmentMapId: attachmentId,
+          },
+          values: {
+            environmentMapId: null,
+          },
+          transaction: options.transaction,
+        });
+      }
+
+      if (
+        this.deletingEnvironmentMapAttachmentIds.has(String(attachmentId)) ||
+        !(await this.collectionExists(ENVIRONMENT_MAPS_RESOURCE, {
           transaction: options.transaction,
         }))
       ) {
         return;
       }
 
-      const repository = this.db.getRepository(FILE_SETTINGS_RESOURCE);
-
-      await repository.destroy({
+      await this.db.getRepository(ENVIRONMENT_MAPS_RESOURCE).destroy({
         filter: {
-          fileId: attachmentId,
-        },
-        transaction: options.transaction,
-      });
-
-      await repository.update({
-        filter: {
-          environmentMapId: attachmentId,
-        },
-        values: {
-          environmentMapId: null,
+          attachmentId,
         },
         transaction: options.transaction,
       });
@@ -173,7 +295,7 @@ export class Plugin3dPreviewServer extends Plugin {
       ctx.throw(400, 'fileId is required');
     }
 
-    const hasSettingsCollection = await this.ensureSettingsCollection();
+    const hasSettingsCollection = await this.ensureCollection(FILE_SETTINGS_RESOURCE);
 
     if (!hasSettingsCollection) {
       ctx.body = {
@@ -195,9 +317,13 @@ export class Plugin3dPreviewServer extends Plugin {
 
     if (environmentMapId) {
       const attachment = await findAttachment(ctx, environmentMapId);
+      const environmentMapRecord = await this.findEnvironmentMapRecordByAttachmentId(environmentMapId);
 
-      if (attachment && ENVIRONMENT_MAP_EXTENSIONS.includes(getExtension(attachment))) {
-        environmentMap = serializeAttachment(attachment);
+      if (attachment && environmentMapRecord && ENVIRONMENT_MAP_EXTENSIONS.includes(getExtension(attachment))) {
+        environmentMap = {
+          ...serializeAttachment(attachment),
+          title: environmentMapRecord.get('title') || serializeAttachment(attachment)?.title,
+        };
       }
     }
 
@@ -219,7 +345,7 @@ export class Plugin3dPreviewServer extends Plugin {
 
     await assertAttachmentExtension(ctx, fileId, MODEL_EXTENSIONS, 'fileId must reference a GLB or GLTF attachment');
 
-    const hasSettingsCollection = await this.ensureSettingsCollection();
+    const hasSettingsCollection = await this.ensureCollection(FILE_SETTINGS_RESOURCE);
 
     if (!hasSettingsCollection) {
       ctx.throw(500, 'Environment map settings collection is not registered');
@@ -232,9 +358,18 @@ export class Plugin3dPreviewServer extends Plugin {
         ctx,
         environmentMapId,
         ENVIRONMENT_MAP_EXTENSIONS,
-        'environmentMapId must reference a supported environment map attachment',
+        'Only .hdr files can be used as environment maps',
       );
-      environmentMap = serializeAttachment(attachment);
+      const environmentMapRecord = await this.findEnvironmentMapRecordByAttachmentId(environmentMapId);
+
+      if (!environmentMapRecord) {
+        ctx.throw(400, 'environmentMapId must reference a registered environment map');
+      }
+
+      environmentMap = {
+        ...serializeAttachment(attachment),
+        title: environmentMapRecord.get('title') || serializeAttachment(attachment)?.title,
+      };
     }
 
     const repository = ctx.db.getRepository(FILE_SETTINGS_RESOURCE);
@@ -266,36 +401,6 @@ export class Plugin3dPreviewServer extends Plugin {
       environmentMap,
     };
 
-    await next();
-  }
-
-  async listEnvironmentMaps(ctx, next) {
-    const { keyword } = ctx.action.params;
-    const extensionValues = ENVIRONMENT_MAP_EXTENSIONS.flatMap((extension) => [
-      `.${extension}`,
-      `.${extension.toUpperCase()}`,
-    ]);
-    const filter: any = {
-      'extname.$in': extensionValues,
-    };
-
-    if (keyword) {
-      filter.$or = [
-        {
-          'title.$includes': keyword,
-        },
-        {
-          'filename.$includes': keyword,
-        },
-      ];
-    }
-
-    const rows = await ctx.db.getRepository('attachments').find({
-      filter,
-      sort: ['title', 'filename'],
-    });
-
-    ctx.body = rows.map(serializeAttachment);
     await next();
   }
 

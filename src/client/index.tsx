@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, message, Modal, Select, Space, Typography, Upload } from 'antd';
+import { Button, Card, Input, message, Modal, Popconfirm, Select, Space, Table, Typography, Upload } from 'antd';
 import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin, useAPIClient } from '@nocobase/client';
 import * as THREE from 'three';
@@ -21,13 +21,25 @@ type File = {
   mimetype?: string;
 };
 
-type EnvironmentMap = {
+type Attachment = {
   id: string | number;
   title?: string;
   filename?: string;
   extname?: string;
   mimetype?: string;
+  size?: number;
   url?: string;
+};
+
+type EnvironmentMap = Attachment;
+
+type EnvironmentMapRecord = {
+  id: string | number;
+  title?: string;
+  attachmentId?: string | number;
+  attachment?: Attachment;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type PreviewerProps = {
@@ -65,6 +77,7 @@ type EnvironmentMapModalProps = {
 
 const environmentMapCache = new Map<string, EnvironmentMap | null>();
 const environmentMapSubscribers = new Set<() => void>();
+let environmentMapCacheRevision = 0;
 
 function getFileId(file: File) {
   return file.id === null || file.id === undefined || file.id === '' ? null : String(file.id);
@@ -78,7 +91,20 @@ function getDisplayName(file?: EnvironmentMap | null) {
   return file.title || file.filename || `#${file.id}`;
 }
 
-function getEnvironmentMapExtension(file?: EnvironmentMap | null) {
+function getEnvironmentMapRecordAttachment(record?: EnvironmentMapRecord | null) {
+  return record?.attachment || null;
+}
+
+function getEnvironmentMapRecordDisplayName(record?: EnvironmentMapRecord | null) {
+  if (!record) {
+    return 'Default';
+  }
+
+  const attachment = getEnvironmentMapRecordAttachment(record);
+  return record.title || attachment?.title || attachment?.filename || `#${record.id}`;
+}
+
+function getEnvironmentMapExtension(file?: Attachment | null) {
   const extname = file?.extname;
 
   if (extname) {
@@ -90,6 +116,10 @@ function getEnvironmentMapExtension(file?: EnvironmentMap | null) {
   return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
 }
 
+function isHdrAttachment(file?: Attachment | null) {
+  return getEnvironmentMapExtension(file) === 'hdr';
+}
+
 function resolveUrl(url?: string) {
   if (!url) {
     return undefined;
@@ -98,12 +128,34 @@ function resolveUrl(url?: string) {
   return url.startsWith('https://') || url.startsWith('http://') ? url : `${location.origin}/${url.replace(/^\//, '')}`;
 }
 
+function formatFileSize(size?: number) {
+  if (!size) {
+    return '';
+  }
+
+  if (size < 1024) {
+    return `${size} B`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getCachedEnvironmentMap(fileId: string) {
   return environmentMapCache.has(fileId) ? environmentMapCache.get(fileId) : undefined;
 }
 
 function setCachedEnvironmentMap(fileId: string, environmentMap: EnvironmentMap | null) {
   environmentMapCache.set(fileId, environmentMap);
+  environmentMapSubscribers.forEach((listener) => listener());
+}
+
+function invalidateEnvironmentMapCache() {
+  environmentMapCache.clear();
+  environmentMapCacheRevision += 1;
   environmentMapSubscribers.forEach((listener) => listener());
 }
 
@@ -129,11 +181,13 @@ function useEnvironmentMap(file: File) {
   const [environmentMap, setEnvironmentMap] = useState<EnvironmentMap | null | undefined>(() =>
     fileId ? getCachedEnvironmentMap(fileId) : null,
   );
+  const [cacheRevision, setCacheRevision] = useState(environmentMapCacheRevision);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const listener = () => {
       setEnvironmentMap(fileId ? getCachedEnvironmentMap(fileId) : null);
+      setCacheRevision(environmentMapCacheRevision);
     };
 
     environmentMapSubscribers.add(listener);
@@ -186,7 +240,7 @@ function useEnvironmentMap(file: File) {
     return () => {
       active = false;
     };
-  }, [api, fileId]);
+  }, [api, cacheRevision, fileId]);
 
   return {
     environmentMap: environmentMap || null,
@@ -264,7 +318,15 @@ function ModelViewer({
   );
 }
 
-function EnvironmentMapPreview({ environmentMap }: { environmentMap: EnvironmentMap | null }) {
+function EnvironmentMapPreview({
+  environmentMap,
+  height = 140,
+  emptyText = 'Select an environment map to preview it',
+}: {
+  environmentMap: Attachment | null;
+  height?: number;
+  emptyText?: string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvasState, setCanvasState] = useState<'idle' | 'loading' | 'error'>('idle');
   const previewUrl = resolveUrl(environmentMap?.url);
@@ -339,7 +401,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
       geometry?.dispose();
       renderer?.dispose();
     };
-  }, [extension, isHdrImage, previewUrl]);
+  }, [extension, height, isHdrImage, previewUrl]);
 
   if (!environmentMap || !previewUrl) {
     return (
@@ -349,12 +411,12 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
           border: '1px dashed #d9d9d9',
           borderRadius: 6,
           display: 'flex',
-          height: 140,
+          height,
           justifyContent: 'center',
           width: '100%',
         }}
       >
-        <Typography.Text type="secondary">Select an environment map to preview it</Typography.Text>
+        <Typography.Text type="secondary">{emptyText}</Typography.Text>
       </div>
     );
   }
@@ -367,7 +429,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
           border: '1px solid #d9d9d9',
           borderRadius: 6,
           display: 'flex',
-          height: 140,
+          height,
           justifyContent: 'center',
           width: '100%',
         }}
@@ -383,7 +445,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
         background: '#f5f5f5',
         border: '1px solid #d9d9d9',
         borderRadius: 6,
-        height: 140,
+        height,
         overflow: 'hidden',
         position: 'relative',
         width: '100%',
@@ -413,7 +475,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
 function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: EnvironmentMapModalProps) {
   const api = useAPIClient();
   const fileId = getFileId(file);
-  const [maps, setMaps] = useState<EnvironmentMap[]>([]);
+  const [maps, setMaps] = useState<EnvironmentMapRecord[]>([]);
   const [selectedMapId, setSelectedMapId] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -427,6 +489,10 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
         const response = await api.request({
           url: `${ENVIRONMENT_MAPS_RESOURCE}:list`,
           method: 'get',
+          params: {
+            appends: ['attachment'],
+            sort: ['title', '-createdAt'],
+          },
         });
         setMaps(response?.data?.data || []);
       } catch (error) {
@@ -443,9 +509,21 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
       return;
     }
 
-    setSelectedMapId(environmentMap ? String(environmentMap.id) : undefined);
+    setSelectedMapId(undefined);
     loadEnvironmentMaps();
   }, [environmentMap, loadEnvironmentMaps, open]);
+
+  useEffect(() => {
+    if (!open || !environmentMap) {
+      return;
+    }
+
+    const currentRecord = maps.find((item) => String(item.attachmentId) === String(environmentMap.id));
+
+    if (currentRecord) {
+      setSelectedMapId(String(currentRecord.id));
+    }
+  }, [environmentMap, maps, open]);
 
   const saveEnvironmentMap = useCallback(
     async (environmentMapId: string | null) => {
@@ -501,12 +579,31 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
           throw new Error('Upload response did not include an attachment id');
         }
 
-        options.onSuccess?.(uploaded);
-        setMaps((currentMaps) => {
-          const exists = currentMaps.some((item) => String(item.id) === String(uploaded.id));
-          return exists ? currentMaps : [uploaded, ...currentMaps];
+        if (!isHdrAttachment(uploaded)) {
+          throw new Error('Only .hdr files can be used as environment maps');
+        }
+
+        const environmentMapResponse = await api.request({
+          url: `${ENVIRONMENT_MAPS_RESOURCE}:create`,
+          method: 'post',
+          data: {
+            title: uploaded.title || uploaded.filename,
+            attachmentId: uploaded.id,
+          },
         });
-        setSelectedMapId(String(uploaded.id));
+        const environmentMapRecord = {
+          ...(environmentMapResponse?.data?.data || {}),
+          attachmentId: uploaded.id,
+          attachment: uploaded,
+        };
+
+        options.onSuccess?.(environmentMapRecord);
+        setMaps((currentMaps) => {
+          const exists = currentMaps.some((item) => String(item.id) === String(environmentMapRecord.id));
+          return exists ? currentMaps : [environmentMapRecord, ...currentMaps];
+        });
+        setSelectedMapId(String(environmentMapRecord.id));
+        invalidateEnvironmentMapCache();
         message.success('Environment map uploaded');
         await loadEnvironmentMaps();
       } catch (error) {
@@ -526,12 +623,10 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
 
     const map = maps.find((item) => String(item.id) === selectedMapId);
 
-    if (map) {
-      return map;
-    }
+    return map || null;
+  }, [maps, selectedMapId]);
 
-    return environmentMap && String(environmentMap.id) === selectedMapId ? environmentMap : null;
-  }, [environmentMap, maps, selectedMapId]);
+  const selectedAttachment = getEnvironmentMapRecordAttachment(selectedMap);
 
   return (
     <Modal
@@ -550,9 +645,9 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
             <Button onClick={onClose}>Cancel</Button>
             <Button
               type="primary"
-              disabled={!selectedMapId}
+              disabled={!selectedAttachment}
               loading={saving}
-              onClick={() => saveEnvironmentMap(selectedMapId || null)}
+              onClick={() => saveEnvironmentMap(selectedAttachment ? String(selectedAttachment.id) : null)}
             >
               Apply
             </Button>
@@ -578,13 +673,233 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
           }
           options={maps.map((item) => ({
             value: String(item.id),
-            label: getDisplayName(item),
+            label: getEnvironmentMapRecordDisplayName(item),
           }))}
           style={{ width: '100%' }}
         />
-        <EnvironmentMapPreview environmentMap={selectedMap} />
+        <EnvironmentMapPreview environmentMap={selectedAttachment} />
       </Space>
     </Modal>
+  );
+}
+
+function EnvironmentMapsAdminPage() {
+  const api = useAPIClient();
+  const [keyword, setKeyword] = useState('');
+  const [records, setRecords] = useState<EnvironmentMapRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 20,
+    total: 0,
+  });
+
+  const loadRecords = useCallback(
+    async (nextPage = pagination.current, nextPageSize = pagination.pageSize, nextKeyword = keyword) => {
+      setLoading(true);
+
+      try {
+        const filter = nextKeyword
+          ? {
+              'title.$includes': nextKeyword,
+            }
+          : undefined;
+        const response = await api.request({
+          url: `${ENVIRONMENT_MAPS_RESOURCE}:list`,
+          method: 'get',
+          params: {
+            appends: ['attachment'],
+            filter,
+            page: nextPage,
+            pageSize: nextPageSize,
+            sort: ['-createdAt'],
+          },
+        });
+        const rows = response?.data?.data || [];
+        const meta = response?.data?.meta || {};
+
+        setRecords(rows);
+        setPagination({
+          current: Number(meta.page || nextPage),
+          pageSize: Number(meta.pageSize || nextPageSize),
+          total: Number(meta.count || rows.length),
+        });
+      } catch (error) {
+        message.error('Unable to load environment maps');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [api, keyword, pagination.current, pagination.pageSize],
+  );
+
+  useEffect(() => {
+    loadRecords(1, pagination.pageSize);
+  }, []);
+
+  const uploadEnvironmentMap = useCallback(
+    async (options: any) => {
+      setUploading(true);
+
+      try {
+        const formData = new FormData();
+        formData.append('file', options.file);
+
+        const uploadResponse = await api.request({
+          url: 'attachments:create',
+          method: 'post',
+          data: formData,
+        });
+        const uploaded = uploadResponse?.data?.data;
+
+        if (!uploaded?.id || !isHdrAttachment(uploaded)) {
+          throw new Error('Only .hdr files can be used as environment maps');
+        }
+
+        await api.request({
+          url: `${ENVIRONMENT_MAPS_RESOURCE}:create`,
+          method: 'post',
+          data: {
+            title: uploaded.title || uploaded.filename,
+            attachmentId: uploaded.id,
+          },
+        });
+
+        options.onSuccess?.(uploaded);
+        invalidateEnvironmentMapCache();
+        message.success('Environment map uploaded');
+        await loadRecords(1, pagination.pageSize);
+      } catch (error) {
+        options.onError?.(error);
+        message.error(error instanceof Error ? error.message : 'Unable to upload environment map');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [api, loadRecords, pagination.pageSize],
+  );
+
+  const deleteEnvironmentMap = useCallback(
+    async (record: EnvironmentMapRecord) => {
+      try {
+        await api.request({
+          url: `${ENVIRONMENT_MAPS_RESOURCE}:destroy`,
+          method: 'post',
+          params: {
+            filterByTk: record.id,
+          },
+        });
+        invalidateEnvironmentMapCache();
+        message.success('Environment map deleted');
+        await loadRecords(pagination.current, pagination.pageSize);
+      } catch (error) {
+        message.error('Unable to delete environment map');
+      }
+    },
+    [api, loadRecords, pagination.current, pagination.pageSize],
+  );
+
+  const downloadEnvironmentMap = useCallback((record: EnvironmentMapRecord) => {
+    const attachment = getEnvironmentMapRecordAttachment(record);
+    const url = resolveUrl(attachment?.url);
+
+    if (!url) {
+      message.error('Unable to download environment map');
+      return;
+    }
+
+    saveAs(url, attachment?.filename || `${getEnvironmentMapRecordDisplayName(record)}.hdr`);
+  }, []);
+
+  return (
+    <Card bordered={false}>
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} wrap>
+          <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
+            <Button type="primary" loading={uploading}>
+              Upload HDRI
+            </Button>
+          </Upload>
+          <Input.Search
+            allowClear
+            placeholder="Search HDRI"
+            style={{ width: 280 }}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            onSearch={(value) => {
+              setKeyword(value);
+              loadRecords(1, pagination.pageSize, value);
+            }}
+          />
+        </Space>
+        <Table
+          rowKey="id"
+          loading={loading}
+          dataSource={records}
+          pagination={pagination}
+          onChange={(nextPagination) => {
+            loadRecords(nextPagination.current || 1, nextPagination.pageSize || pagination.pageSize);
+          }}
+          columns={[
+            {
+              title: 'Preview',
+              dataIndex: 'preview',
+              width: 180,
+              render: (_, record: EnvironmentMapRecord) => (
+                <EnvironmentMapPreview
+                  environmentMap={getEnvironmentMapRecordAttachment(record)}
+                  emptyText="No HDRI"
+                  height={72}
+                />
+              ),
+            },
+            {
+              title: 'Title',
+              dataIndex: 'title',
+              render: (_, record: EnvironmentMapRecord) => getEnvironmentMapRecordDisplayName(record),
+            },
+            {
+              title: 'Filename',
+              dataIndex: ['attachment', 'filename'],
+              render: (_, record: EnvironmentMapRecord) => getEnvironmentMapRecordAttachment(record)?.filename || '',
+            },
+            {
+              title: 'Size',
+              dataIndex: ['attachment', 'size'],
+              width: 120,
+              render: (_, record: EnvironmentMapRecord) => formatFileSize(getEnvironmentMapRecordAttachment(record)?.size),
+            },
+            {
+              title: 'Created at',
+              dataIndex: 'createdAt',
+              width: 180,
+            },
+            {
+              title: 'Actions',
+              dataIndex: 'actions',
+              width: 160,
+              render: (_, record: EnvironmentMapRecord) => (
+                <Space>
+                  <Button type="link" onClick={() => downloadEnvironmentMap(record)}>
+                    Download
+                  </Button>
+                  <Popconfirm
+                    title="Delete this HDRI?"
+                    description="3D files using this HDRI will return to the default environment."
+                    onConfirm={() => deleteEnvironmentMap(record)}
+                  >
+                    <Button danger type="link">
+                      Delete
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </Space>
+    </Card>
   );
 }
 
@@ -735,6 +1050,17 @@ export class Plugin3dPreviewClient extends Plugin {
   async beforeLoad() {}
 
   async load() {
+    this.app.pluginSettingsManager.add('plugin-3d-preview.environment-maps', {
+      title: '3D preview environment maps',
+      icon: 'PictureOutlined',
+      Component: EnvironmentMapsAdminPage,
+    });
+
+    this.router.add('admin.plugin-3d-preview.environment-maps', {
+      path: '/admin/plugin-3d-preview/environment-maps',
+      Component: EnvironmentMapsAdminPage,
+    });
+
     attachmentFileTypes.add({
       match(file) {
         if (file.mimetype && ['model/gltf-binary', 'model/gltf+json'].includes(file.mimetype)) {
