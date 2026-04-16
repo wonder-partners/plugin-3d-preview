@@ -70,7 +70,7 @@ Default settings: FOV 30°, auto-rotate, AGX tone mapping, SSAO + SMAA effects.
 
 Environment maps are configured per 3D file from uploaded NocoBase attachments. The selected map is stored on the server and is shared by all users who preview the same file.
 
-Supported uploaded formats: `.hdr`, `.exr`, `.jpg`, `.jpeg`, `.png`, `.webp`.
+Supported uploaded format: `.hdr`.
 
 Changing the environment map uses the `pm.plugin-3d-preview.environmentMaps` permission snippet. Grant it to roles that should manage shared per-file lighting.
 

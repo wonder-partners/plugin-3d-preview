@@ -3,7 +3,7 @@ import { Plugin } from '@nocobase/server';
 const FILE_SETTINGS_RESOURCE = 'plugin3dPreviewFileSettings';
 const ENVIRONMENT_MAPS_RESOURCE = 'plugin3dPreviewEnvironmentMaps';
 const MODEL_EXTENSIONS = ['glb', 'gltf'];
-const ENVIRONMENT_MAP_EXTENSIONS = ['hdr', 'exr', 'jpg', 'jpeg', 'png', 'webp'];
+const ENVIRONMENT_MAP_EXTENSIONS = ['hdr'];
 
 function getExtension(file: any) {
   const extname = file?.get?.('extname') || file?.extname;

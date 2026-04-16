@@ -3,7 +3,6 @@ import { Button, message, Modal, Select, Space, Typography, Upload } from 'antd'
 import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin, useAPIClient } from '@nocobase/client';
 import * as THREE from 'three';
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import '@google/model-viewer';
 import '@wonder-partners/model-viewer-stats';
@@ -11,9 +10,7 @@ import '@wonder-partners/model-viewer-stats';
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
 const FILE_SETTINGS_RESOURCE = 'plugin3dPreviewFileSettings';
 const ENVIRONMENT_MAPS_RESOURCE = 'plugin3dPreviewEnvironmentMaps';
-const ENVIRONMENT_MAP_ACCEPT = '.hdr,.exr,.jpg,.jpeg,.png,.webp,image/*';
-const BROWSER_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
-const HDR_IMAGE_EXTENSIONS = ['hdr', 'exr'];
+const ENVIRONMENT_MAP_ACCEPT = '.hdr';
 
 type File = {
   id?: string | number;
@@ -272,9 +269,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
   const [canvasState, setCanvasState] = useState<'idle' | 'loading' | 'error'>('idle');
   const previewUrl = resolveUrl(environmentMap?.url);
   const extension = getEnvironmentMapExtension(environmentMap);
-  const displayName = getDisplayName(environmentMap);
-  const isBrowserImage = BROWSER_IMAGE_EXTENSIONS.includes(extension);
-  const isHdrImage = HDR_IMAGE_EXTENSIONS.includes(extension);
+  const isHdrImage = extension === 'hdr';
 
   useEffect(() => {
     if (!previewUrl || !isHdrImage) {
@@ -301,7 +296,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
         const bounds = canvas.getBoundingClientRect();
         const width = Math.max(1, Math.floor(bounds.width || 480));
         const height = Math.max(1, Math.floor(bounds.height || 140));
-        const loader = extension === 'exr' ? new EXRLoader() : new RGBELoader();
+        const loader = new RGBELoader();
 
         loader.setCrossOrigin('anonymous');
         texture = await loader.loadAsync(previewUrl);
@@ -364,24 +359,6 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
     );
   }
 
-  if (isBrowserImage) {
-    return (
-      <img
-        alt={`${displayName} preview`}
-        src={previewUrl}
-        style={{
-          background: '#f5f5f5',
-          border: '1px solid #d9d9d9',
-          borderRadius: 6,
-          display: 'block',
-          height: 140,
-          objectFit: 'cover',
-          width: '100%',
-        }}
-      />
-    );
-  }
-
   if (!isHdrImage) {
     return (
       <div
@@ -395,7 +372,7 @@ function EnvironmentMapPreview({ environmentMap }: { environmentMap: Environment
           width: '100%',
         }}
       >
-        <Typography.Text type="secondary">Preview unavailable for this format</Typography.Text>
+        <Typography.Text type="secondary">Only .hdr files can be used as environment maps</Typography.Text>
       </div>
     );
   }
