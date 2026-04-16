@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Input, message, Modal, Select, Space, Typography, Upload } from 'antd';
+import { Button, message, Modal, Select, Space, Typography, Upload } from 'antd';
 import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin, useAPIClient } from '@nocobase/client';
 import '@google/model-viewer';
@@ -253,7 +253,6 @@ function ModelViewer({
 function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: EnvironmentMapModalProps) {
   const api = useAPIClient();
   const fileId = getFileId(file);
-  const [keyword, setKeyword] = useState('');
   const [maps, setMaps] = useState<EnvironmentMap[]>([]);
   const [selectedMapId, setSelectedMapId] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -261,14 +260,13 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
   const [uploading, setUploading] = useState(false);
 
   const loadEnvironmentMaps = useCallback(
-    async (nextKeyword?: string) => {
+    async () => {
       setLoading(true);
 
       try {
         const response = await api.request({
           url: `${ENVIRONMENT_MAPS_RESOURCE}:list`,
           method: 'get',
-          params: nextKeyword ? { keyword: nextKeyword } : {},
         });
         setMaps(response?.data?.data || []);
       } catch (error) {
@@ -350,7 +348,7 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
         });
         setSelectedMapId(String(uploaded.id));
         message.success('Environment map uploaded');
-        await loadEnvironmentMaps(keyword);
+        await loadEnvironmentMaps();
       } catch (error) {
         options.onError?.(error);
         message.error('Unable to upload environment map');
@@ -358,7 +356,7 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
         setUploading(false);
       }
     },
-    [api, keyword, loadEnvironmentMaps],
+    [api, loadEnvironmentMaps],
   );
 
   return (
@@ -387,23 +385,19 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
         <Typography.Text>Current: {getDisplayName(environmentMap)}</Typography.Text>
-        <Space.Compact style={{ width: '100%' }}>
-          <Input
-            value={keyword}
-            placeholder="Search uploaded environment maps"
-            onChange={(event) => setKeyword(event.target.value)}
-            onPressEnter={() => loadEnvironmentMaps(keyword)}
-          />
-          <Button onClick={() => loadEnvironmentMaps(keyword)} loading={loading}>
-            Search
-          </Button>
-        </Space.Compact>
         <Select
           allowClear
+          showSearch
           loading={loading}
-          placeholder="Select an uploaded environment map"
+          placeholder="Search or select an uploaded environment map"
           value={selectedMapId}
           onChange={(value) => setSelectedMapId(value)}
+          optionFilterProp="label"
+          filterOption={(input, option) =>
+            String(option?.label || '')
+              .toLowerCase()
+              .includes(input.toLowerCase())
+          }
           options={maps.map((item) => ({
             value: String(item.id),
             label: getDisplayName(item),
