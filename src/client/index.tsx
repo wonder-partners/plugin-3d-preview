@@ -4,8 +4,8 @@ import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin } from '@nocobase/client';
 import '@google/model-viewer';
 import '@wonder-partners/model-viewer-stats';
-import neutralEnv from './assets/env_neutral.jpg';
 
+const envMap = new URL('./assets/env_kitchen.hdr', import.meta.url).href;
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
 
 type File = {
@@ -120,7 +120,7 @@ function ModelViewer({
       interaction-prompt={interactionPrompt}
       disable-zoom={disableZoom}
       tone-mapping={toneMapping}
-      environment-image={neutralEnv}
+      environment-image={envMap}
       style={{ width: '100%', height: '100%' }}
     >
       {children}
