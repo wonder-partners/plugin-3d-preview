@@ -5,7 +5,7 @@ import { useAPIClient } from '@nocobase/client';
 import { ENVIRONMENT_MAP_ACCEPT, ENVIRONMENT_MAPS_RESOURCE } from '../constants';
 import type { EnvironmentMapRecord } from '../types';
 import { invalidateEnvironmentMapCache } from '../hooks/useEnvironmentMap';
-import { formatFileSize, resolveUrl } from '../utils/files';
+import { formatDateTime, formatFileSize, resolveUrl } from '../utils/files';
 import {
   getEnvironmentMapRecordAttachment,
   getEnvironmentMapRecordDisplayName,
@@ -204,6 +204,7 @@ export function EnvironmentMapsAdminPage() {
               title: 'Created at',
               dataIndex: 'createdAt',
               width: 180,
+              render: (value: string) => formatDateTime(value),
             },
             {
               title: 'Actions',
