@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, message, Modal, Select, Space, Typography, Upload } from 'antd';
 import { saveAs } from 'file-saver';
 import { attachmentFileTypes, Plugin, useAPIClient } from '@nocobase/client';
+import * as THREE from 'three';
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import '@google/model-viewer';
 import '@wonder-partners/model-viewer-stats';
 
@@ -9,6 +12,8 @@ const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
 const FILE_SETTINGS_RESOURCE = 'plugin3dPreviewFileSettings';
 const ENVIRONMENT_MAPS_RESOURCE = 'plugin3dPreviewEnvironmentMaps';
 const ENVIRONMENT_MAP_ACCEPT = '.hdr,.exr,.jpg,.jpeg,.png,.webp,image/*';
+const BROWSER_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const HDR_IMAGE_EXTENSIONS = ['hdr', 'exr'];
 
 type File = {
   id?: string | number;
@@ -74,6 +79,18 @@ function getDisplayName(file?: EnvironmentMap | null) {
   }
 
   return file.title || file.filename || `#${file.id}`;
+}
+
+function getEnvironmentMapExtension(file?: EnvironmentMap | null) {
+  const extname = file?.extname;
+
+  if (extname) {
+    return String(extname).replace(/^\./, '').toLowerCase();
+  }
+
+  const source = file?.url || file?.filename || '';
+  const parts = String(source).split('?')[0].split('.');
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
 }
 
 function resolveUrl(url?: string) {
@@ -250,6 +267,172 @@ function ModelViewer({
   );
 }
 
+function EnvironmentMapPreview({ environmentMap }: { environmentMap: EnvironmentMap | null }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvasState, setCanvasState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const previewUrl = resolveUrl(environmentMap?.url);
+  const extension = getEnvironmentMapExtension(environmentMap);
+  const displayName = getDisplayName(environmentMap);
+  const isBrowserImage = BROWSER_IMAGE_EXTENSIONS.includes(extension);
+  const isHdrImage = HDR_IMAGE_EXTENSIONS.includes(extension);
+
+  useEffect(() => {
+    if (!previewUrl || !isHdrImage) {
+      setCanvasState('idle');
+      return;
+    }
+
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      return;
+    }
+
+    let active = true;
+    let renderer: THREE.WebGLRenderer | null = null;
+    let texture: THREE.Texture | null = null;
+    let material: THREE.MeshBasicMaterial | null = null;
+    let geometry: THREE.PlaneGeometry | null = null;
+
+    const renderPreview = async () => {
+      setCanvasState('loading');
+
+      try {
+        const bounds = canvas.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(bounds.width || 480));
+        const height = Math.max(1, Math.floor(bounds.height || 140));
+        const loader = extension === 'exr' ? new EXRLoader() : new RGBELoader();
+
+        loader.setCrossOrigin('anonymous');
+        texture = await loader.loadAsync(previewUrl);
+
+        if (!active) {
+          texture.dispose();
+          return;
+        }
+
+        renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: true,
+        });
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        renderer.setSize(width, height, false);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        geometry = new THREE.PlaneGeometry(2, 2);
+        material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
+        scene.add(new THREE.Mesh(geometry, material));
+        renderer.render(scene, camera);
+        setCanvasState('idle');
+      } catch (error) {
+        if (active) {
+          setCanvasState('error');
+        }
+      }
+    };
+
+    renderPreview();
+
+    return () => {
+      active = false;
+      texture?.dispose();
+      material?.dispose();
+      geometry?.dispose();
+      renderer?.dispose();
+    };
+  }, [extension, isHdrImage, previewUrl]);
+
+  if (!environmentMap || !previewUrl) {
+    return (
+      <div
+        style={{
+          alignItems: 'center',
+          border: '1px dashed #d9d9d9',
+          borderRadius: 6,
+          display: 'flex',
+          height: 140,
+          justifyContent: 'center',
+          width: '100%',
+        }}
+      >
+        <Typography.Text type="secondary">Select an environment map to preview it</Typography.Text>
+      </div>
+    );
+  }
+
+  if (isBrowserImage) {
+    return (
+      <img
+        alt={`${displayName} preview`}
+        src={previewUrl}
+        style={{
+          background: '#f5f5f5',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          display: 'block',
+          height: 140,
+          objectFit: 'cover',
+          width: '100%',
+        }}
+      />
+    );
+  }
+
+  if (!isHdrImage) {
+    return (
+      <div
+        style={{
+          alignItems: 'center',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          display: 'flex',
+          height: 140,
+          justifyContent: 'center',
+          width: '100%',
+        }}
+      >
+        <Typography.Text type="secondary">Preview unavailable for this format</Typography.Text>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        background: '#f5f5f5',
+        border: '1px solid #d9d9d9',
+        borderRadius: 6,
+        height: 140,
+        overflow: 'hidden',
+        position: 'relative',
+        width: '100%',
+      }}
+    >
+      <canvas ref={canvasRef} style={{ display: 'block', height: '100%', width: '100%' }} />
+      {canvasState !== 'idle' && (
+        <div
+          style={{
+            alignItems: 'center',
+            background: 'rgba(255, 255, 255, 0.72)',
+            display: 'flex',
+            inset: 0,
+            justifyContent: 'center',
+            position: 'absolute',
+          }}
+        >
+          <Typography.Text type="secondary">
+            {canvasState === 'loading' ? 'Loading preview' : 'Preview unavailable'}
+          </Typography.Text>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: EnvironmentMapModalProps) {
   const api = useAPIClient();
   const fileId = getFileId(file);
@@ -359,6 +542,20 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
     [api, loadEnvironmentMaps],
   );
 
+  const selectedMap = useMemo(() => {
+    if (!selectedMapId) {
+      return null;
+    }
+
+    const map = maps.find((item) => String(item.id) === selectedMapId);
+
+    if (map) {
+      return map;
+    }
+
+    return environmentMap && String(environmentMap.id) === selectedMapId ? environmentMap : null;
+  }, [environmentMap, maps, selectedMapId]);
+
   return (
     <Modal
       open={open}
@@ -408,6 +605,7 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
           }))}
           style={{ width: '100%' }}
         />
+        <EnvironmentMapPreview environmentMap={selectedMap} />
       </Space>
     </Modal>
   );
