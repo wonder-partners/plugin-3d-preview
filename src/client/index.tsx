@@ -364,29 +364,30 @@ function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: E
       open={open}
       title="Environment map"
       onCancel={onClose}
-      footer={[
-        <Upload key="upload" accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
-          <Button loading={uploading}>Upload environment map</Button>
-        </Upload>,
-        <Button key="reset" onClick={() => saveEnvironmentMap(null)} loading={saving}>
-          Reset to default
-        </Button>,
-        <Button key="cancel" onClick={onClose}>
-          Cancel
-        </Button>,
-        <Button
-          key="apply"
-          type="primary"
-          disabled={!selectedMapId}
-          loading={saving}
-          onClick={() => saveEnvironmentMap(selectedMapId || null)}
-        >
-          Apply
-        </Button>,
-      ]}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
+            <Button loading={uploading}>Upload environment map</Button>
+          </Upload>
+          <Space size="middle">
+            <Button onClick={() => saveEnvironmentMap(null)} loading={saving}>
+              Reset to default
+            </Button>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button
+              type="primary"
+              disabled={!selectedMapId}
+              loading={saving}
+              onClick={() => saveEnvironmentMap(selectedMapId || null)}
+            >
+              Apply
+            </Button>
+          </Space>
+        </div>
+      }
       destroyOnClose
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <Space direction="vertical" style={{ width: '100%' }} size="large">
         <Typography.Text>Current: {getDisplayName(environmentMap)}</Typography.Text>
         <Select
           allowClear
