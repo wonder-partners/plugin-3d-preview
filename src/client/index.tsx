@@ -1,18 +1,31 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Modal } from 'antd';
+import { Button, Input, message, Modal, Select, Space, Typography, Upload } from 'antd';
 import { saveAs } from 'file-saver';
-import { attachmentFileTypes, Plugin } from '@nocobase/client';
+import { attachmentFileTypes, Plugin, useAPIClient } from '@nocobase/client';
 import '@google/model-viewer';
 import '@wonder-partners/model-viewer-stats';
 
-const envMap = new URL('./assets/env_kitchen.hdr', import.meta.url).href;
 const STATS_VISIBLE_KEY = 'glb-previewer-stats-visible';
+const FILE_SETTINGS_RESOURCE = 'plugin3dPreviewFileSettings';
+const ENVIRONMENT_MAPS_RESOURCE = 'plugin3dPreviewEnvironmentMaps';
+const ENVIRONMENT_MAP_ACCEPT = '.hdr,.exr,.jpg,.jpeg,.png,.webp,image/*';
 
 type File = {
+  id?: string | number;
   url: string;
   title: string;
+  filename?: string;
   extname?: string;
   mimetype?: string;
+};
+
+type EnvironmentMap = {
+  id: string | number;
+  title?: string;
+  filename?: string;
+  extname?: string;
+  mimetype?: string;
+  url?: string;
 };
 
 type PreviewerProps = {
@@ -28,6 +41,7 @@ type ThumbnailProps = {
 type ModelViewerProps = {
   url: string;
   title: string;
+  environmentImage?: string;
   viewerRef?: React.Ref<HTMLElement>;
   fieldOfView?: string;
   cameraControls?: boolean;
@@ -38,6 +52,46 @@ type ModelViewerProps = {
   toneMapping?: string;
   children?: React.ReactNode;
 };
+
+type EnvironmentMapModalProps = {
+  file: File;
+  open: boolean;
+  environmentMap: EnvironmentMap | null;
+  onClose: () => void;
+  onSaved: (environmentMap: EnvironmentMap | null) => void;
+};
+
+const environmentMapCache = new Map<string, EnvironmentMap | null>();
+const environmentMapSubscribers = new Set<() => void>();
+
+function getFileId(file: File) {
+  return file.id === null || file.id === undefined || file.id === '' ? null : String(file.id);
+}
+
+function getDisplayName(file?: EnvironmentMap | null) {
+  if (!file) {
+    return 'Default';
+  }
+
+  return file.title || file.filename || `#${file.id}`;
+}
+
+function resolveUrl(url?: string) {
+  if (!url) {
+    return undefined;
+  }
+
+  return url.startsWith('https://') || url.startsWith('http://') ? url : `${location.origin}/${url.replace(/^\//, '')}`;
+}
+
+function getCachedEnvironmentMap(fileId: string) {
+  return environmentMapCache.has(fileId) ? environmentMapCache.get(fileId) : undefined;
+}
+
+function setCachedEnvironmentMap(fileId: string, environmentMap: EnvironmentMap | null) {
+  environmentMapCache.set(fileId, environmentMap);
+  environmentMapSubscribers.forEach((listener) => listener());
+}
 
 function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
   if (!ref) {
@@ -52,18 +106,85 @@ function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
 }
 
 function useModelUrl(file: File) {
-  return useMemo(() => {
-    const src =
-      file.url.startsWith('https://') || file.url.startsWith('http://')
-        ? file.url
-        : `${location.origin}/${file.url.replace(/^\//, '')}`;
-    return src;
-  }, [file.url]);
+  return useMemo(() => resolveUrl(file.url), [file.url]);
+}
+
+function useEnvironmentMap(file: File) {
+  const api = useAPIClient();
+  const fileId = getFileId(file);
+  const [environmentMap, setEnvironmentMap] = useState<EnvironmentMap | null | undefined>(() =>
+    fileId ? getCachedEnvironmentMap(fileId) : null,
+  );
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const listener = () => {
+      setEnvironmentMap(fileId ? getCachedEnvironmentMap(fileId) : null);
+    };
+
+    environmentMapSubscribers.add(listener);
+    return () => {
+      environmentMapSubscribers.delete(listener);
+    };
+  }, [fileId]);
+
+  useEffect(() => {
+    if (!fileId) {
+      setEnvironmentMap(null);
+      return;
+    }
+
+    const cached = getCachedEnvironmentMap(fileId);
+    if (cached !== undefined) {
+      setEnvironmentMap(cached);
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+
+    api
+      .request({
+        url: `${FILE_SETTINGS_RESOURCE}:getForFile`,
+        method: 'get',
+        params: { fileId },
+      })
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        const nextEnvironmentMap = response?.data?.data?.environmentMap || null;
+        setCachedEnvironmentMap(fileId, nextEnvironmentMap);
+        setEnvironmentMap(nextEnvironmentMap);
+      })
+      .catch(() => {
+        if (active) {
+          setEnvironmentMap(null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [api, fileId]);
+
+  return {
+    environmentMap: environmentMap || null,
+    environmentImage: resolveUrl(environmentMap?.url),
+    loading,
+  };
 }
 
 function ModelViewer({
   url,
   title,
+  environmentImage,
   viewerRef,
   fieldOfView,
   cameraControls,
@@ -110,6 +231,7 @@ function ModelViewer({
 
   return (
     <model-viewer
+      key={`${url}:${environmentImage || 'default'}`}
       ref={setViewerRef}
       src={url}
       alt={title}
@@ -120,11 +242,179 @@ function ModelViewer({
       interaction-prompt={interactionPrompt}
       disable-zoom={disableZoom}
       tone-mapping={toneMapping}
-      environment-image={envMap}
+      environment-image={environmentImage || undefined}
       style={{ width: '100%', height: '100%' }}
     >
       {children}
     </model-viewer>
+  );
+}
+
+function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: EnvironmentMapModalProps) {
+  const api = useAPIClient();
+  const fileId = getFileId(file);
+  const [keyword, setKeyword] = useState('');
+  const [maps, setMaps] = useState<EnvironmentMap[]>([]);
+  const [selectedMapId, setSelectedMapId] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const loadEnvironmentMaps = useCallback(
+    async (nextKeyword?: string) => {
+      setLoading(true);
+
+      try {
+        const response = await api.request({
+          url: `${ENVIRONMENT_MAPS_RESOURCE}:list`,
+          method: 'get',
+          params: nextKeyword ? { keyword: nextKeyword } : {},
+        });
+        setMaps(response?.data?.data || []);
+      } catch (error) {
+        message.error('Unable to load environment maps');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [api],
+  );
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setSelectedMapId(environmentMap ? String(environmentMap.id) : undefined);
+    loadEnvironmentMaps();
+  }, [environmentMap, loadEnvironmentMaps, open]);
+
+  const saveEnvironmentMap = useCallback(
+    async (environmentMapId: string | null) => {
+      if (!fileId) {
+        message.warning('This file cannot be configured because it has no persisted attachment id');
+        return;
+      }
+
+      setSaving(true);
+
+      try {
+        const response = await api.request({
+          url: `${FILE_SETTINGS_RESOURCE}:setForFile`,
+          method: 'post',
+          data: {
+            fileId,
+            environmentMapId,
+          },
+        });
+        const nextEnvironmentMap = response?.data?.data?.environmentMap || null;
+        setCachedEnvironmentMap(fileId, nextEnvironmentMap);
+        onSaved(nextEnvironmentMap);
+        message.success(environmentMapId ? 'Environment map saved' : 'Environment map reset');
+      } catch (error: any) {
+        if (error?.response?.status === 403) {
+          message.error('You do not have permission to change this environment map');
+        } else {
+          message.error('Unable to save environment map');
+        }
+      } finally {
+        setSaving(false);
+      }
+    },
+    [api, fileId, onSaved],
+  );
+
+  const uploadEnvironmentMap = useCallback(
+    async (options: any) => {
+      setUploading(true);
+
+      try {
+        const formData = new FormData();
+        formData.append('file', options.file);
+
+        const response = await api.request({
+          url: 'attachments:create',
+          method: 'post',
+          data: formData,
+        });
+        const uploaded = response?.data?.data;
+
+        if (!uploaded?.id) {
+          throw new Error('Upload response did not include an attachment id');
+        }
+
+        options.onSuccess?.(uploaded);
+        setMaps((currentMaps) => {
+          const exists = currentMaps.some((item) => String(item.id) === String(uploaded.id));
+          return exists ? currentMaps : [uploaded, ...currentMaps];
+        });
+        setSelectedMapId(String(uploaded.id));
+        message.success('Environment map uploaded');
+        await loadEnvironmentMaps(keyword);
+      } catch (error) {
+        options.onError?.(error);
+        message.error('Unable to upload environment map');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [api, keyword, loadEnvironmentMaps],
+  );
+
+  return (
+    <Modal
+      open={open}
+      title="Environment map"
+      onCancel={onClose}
+      footer={[
+        <Button key="reset" onClick={() => saveEnvironmentMap(null)} loading={saving}>
+          Reset to default
+        </Button>,
+        <Button key="cancel" onClick={onClose}>
+          Cancel
+        </Button>,
+        <Button
+          key="apply"
+          type="primary"
+          disabled={!selectedMapId}
+          loading={saving}
+          onClick={() => saveEnvironmentMap(selectedMapId || null)}
+        >
+          Apply
+        </Button>,
+      ]}
+      destroyOnClose
+    >
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Typography.Text>Current: {getDisplayName(environmentMap)}</Typography.Text>
+        <Space.Compact style={{ width: '100%' }}>
+          <Input
+            value={keyword}
+            placeholder="Search uploaded environment maps"
+            onChange={(event) => setKeyword(event.target.value)}
+            onPressEnter={() => loadEnvironmentMaps(keyword)}
+          />
+          <Button onClick={() => loadEnvironmentMaps(keyword)} loading={loading}>
+            Search
+          </Button>
+        </Space.Compact>
+        <Select
+          allowClear
+          loading={loading}
+          placeholder="Select an uploaded environment map"
+          value={selectedMapId}
+          onChange={(value) => setSelectedMapId(value)}
+          options={maps.map((item) => ({
+            value: String(item.id),
+            label: getDisplayName(item),
+          }))}
+          style={{ width: '100%' }}
+        />
+        <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
+          <Button loading={uploading}>Upload environment map</Button>
+        </Upload>
+      </Space>
+    </Modal>
   );
 }
 
@@ -133,12 +423,15 @@ function Previewer({ index, list, onSwitchIndex }: PreviewerProps) {
   const modelRef = useRef<HTMLDivElement>(null);
   const modelViewerRef = useRef<any>(null);
   const statsRef = useRef<any>(null);
+  const [environmentModalOpen, setEnvironmentModalOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(() => {
     const stored = localStorage.getItem(STATS_VISIBLE_KEY);
     return stored === null ? true : stored === 'true';
   });
 
   const url = useModelUrl(file);
+  const { environmentMap, environmentImage } = useEnvironmentMap(file);
+  const fileId = getFileId(file);
 
   useEffect(() => {
     const statsElement = statsRef.current;
@@ -180,53 +473,67 @@ function Previewer({ index, list, onSwitchIndex }: PreviewerProps) {
   }, [onSwitchIndex]);
 
   return (
-    <Modal
-      open={index != null}
-      title={file.title}
-      onCancel={onClose}
-      footer={[
-        <Button key="stats" onClick={onToggleStats}>
-          Statistics
-        </Button>,
-        <Button key="fullscreen" onClick={onFullscreen}>
-          Fullscreen
-        </Button>,
-        <Button key="download" onClick={onDownload}>
-          Download
-        </Button>,
-      ]}
-      width={'85vw'}
-      centered={true}
-      destroyOnClose
-    >
-      <div
-        ref={modelRef}
-        style={{
-          width: '100%',
-          height: '80vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#fff',
-        }}
+    <>
+      <Modal
+        open={index != null}
+        title={file.title}
+        onCancel={onClose}
+        footer={[
+          <Button key="environment" disabled={!fileId} onClick={() => setEnvironmentModalOpen(true)}>
+            Environment
+          </Button>,
+          <Button key="stats" onClick={onToggleStats}>
+            Statistics
+          </Button>,
+          <Button key="fullscreen" onClick={onFullscreen}>
+            Fullscreen
+          </Button>,
+          <Button key="download" onClick={onDownload}>
+            Download
+          </Button>,
+        ]}
+        width={'85vw'}
+        centered={true}
+        destroyOnClose
       >
-        <ModelViewer
-          url={url}
-          title={file.title}
-          viewerRef={modelViewerRef}
-          fieldOfView="30deg"
-          cameraControls
-          toneMapping="aces"
+        <div
+          ref={modelRef}
+          style={{
+            width: '100%',
+            height: '80vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#fff',
+          }}
         >
-          <model-stats ref={statsRef}></model-stats>
-        </ModelViewer>
-      </div>
-    </Modal>
+          <ModelViewer
+            url={url}
+            title={file.title}
+            environmentImage={environmentImage}
+            viewerRef={modelViewerRef}
+            fieldOfView="30deg"
+            cameraControls
+            toneMapping="aces"
+          >
+            <model-stats ref={statsRef}></model-stats>
+          </ModelViewer>
+        </div>
+      </Modal>
+      <EnvironmentMapModal
+        file={file}
+        open={environmentModalOpen}
+        environmentMap={environmentMap}
+        onClose={() => setEnvironmentModalOpen(false)}
+        onSaved={() => setEnvironmentModalOpen(false)}
+      />
+    </>
   );
 }
 
 function ThumbnailPreviewer({ file }: ThumbnailProps) {
   const url = useModelUrl(file);
+  const { environmentImage } = useEnvironmentMap(file);
 
   return (
     <div
@@ -241,6 +548,7 @@ function ThumbnailPreviewer({ file }: ThumbnailProps) {
       <ModelViewer
         url={url}
         title={file.title}
+        environmentImage={environmentImage}
         autoRotate
         rotationPerSecond="30deg"
         interactionPrompt="none"
@@ -252,9 +560,9 @@ function ThumbnailPreviewer({ file }: ThumbnailProps) {
 }
 
 export class Plugin3dPreviewClient extends Plugin {
-  async afterAdd() { }
+  async afterAdd() {}
 
-  async beforeLoad() { }
+  async beforeLoad() {}
 
   async load() {
     attachmentFileTypes.add({

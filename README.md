@@ -6,7 +6,7 @@ A NocoBase plugin for previewing 3D files (GLB/GLTF) with advanced visual effect
 
 - Interactive 3D preview with camera controls (rotate, zoom, pan)
 - Visual effects: SSAO, SMAA, AGX tone mapping
-- Image-based lighting via `environment-image` (preview + thumbnail)
+- Per-file image-based lighting via uploaded environment maps
 - Real-time statistics panel (geometry, textures, FPS)
 - Fullscreen mode and download functionality
 - Animated thumbnails with auto-rotation
@@ -66,15 +66,15 @@ Statistics panel shows geometry, textures, FPS, and draw calls. Visibility prefe
 
 Default settings: FOV 30°, auto-rotate, AGX tone mapping, SSAO + SMAA effects.
 
-### Environment image (no skybox)
+### Environment maps
 
-The plugin is configured to use a local environment image for lighting/reflections on both the main preview and thumbnails:
+Environment maps are configured per 3D file from uploaded NocoBase attachments. The selected map is stored on the server and is shared by all users who preview the same file.
 
-- Asset: `src/client/assets/studio_kontrast.jpg`
-- Applied in `src/client/index.tsx` with `environment-image={studioEnv}`
-- No `skybox-image` is set (background is not forced by a skybox)
+Supported uploaded formats: `.hdr`, `.exr`, `.jpg`, `.jpeg`, `.png`, `.webp`.
 
-To customize, edit `src/client/index.tsx`. See [Model Viewer docs](https://modelviewer.dev/) for options.
+Changing the environment map uses the `pm.plugin-3d-preview.environmentMaps` permission snippet. Grant it to roles that should manage shared per-file lighting.
+
+When no environment map is configured for a file, the plugin does not set the `environment-image` attribute and `<model-viewer>` uses its default behavior. See [Model Viewer docs](https://modelviewer.dev/) for details.
 
 ## Dependencies
 
