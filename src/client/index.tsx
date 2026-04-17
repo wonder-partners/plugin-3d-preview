@@ -17,9 +17,9 @@ export class Plugin3dPreviewClient extends Plugin {
       aclSnippet: 'pm.plugin-3d-preview.environmentMaps',
     });
 
-    this.app.pluginSettingsManager.add('plugin-3d-preview.hdri-storage', {
-      title: '3D preview HDRI storage',
-      icon: 'CloudUploadOutlined',
+    this.app.pluginSettingsManager.add('plugin-3d-preview-hdri-storage', {
+      title: '3D preview',
+      icon: 'GoldOutlined',
       Component: EnvironmentMapStorageSettingsPage,
       aclSnippet: 'pm.plugin-3d-preview.hdriStorage',
     });
@@ -27,11 +27,6 @@ export class Plugin3dPreviewClient extends Plugin {
     this.router.add('admin.plugin-3d-preview.environment-maps', {
       path: '/admin/plugin-3d-preview/environment-maps',
       Component: EnvironmentMapsAdminPage,
-    });
-
-    this.router.add('admin.plugin-3d-preview.hdri-storage', {
-      path: '/admin/plugin-3d-preview/hdri-storage',
-      Component: EnvironmentMapStorageSettingsPage,
     });
 
     attachmentFileTypes.add({
