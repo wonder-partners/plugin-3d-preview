@@ -157,7 +157,6 @@ export function EnvironmentMapsAdminPage() {
                 <EnvironmentMapPreview
                   environmentMap={getEnvironmentMapRecordAttachment(record)}
                   emptyText="No HDRI"
-                  height={72}
                 />
               ),
             },

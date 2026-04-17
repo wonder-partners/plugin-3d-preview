@@ -8,13 +8,13 @@ import { getEnvironmentMapExtension } from '../utils/environmentMaps';
 
 type EnvironmentMapPreviewProps = {
   environmentMap: Attachment | null;
-  height?: number;
+  aspectRatio?: number;
   emptyText?: string;
 };
 
 export function EnvironmentMapPreview({
   environmentMap,
-  height = 140,
+  aspectRatio = 2,
   emptyText = 'Select an environment map to preview it',
 }: EnvironmentMapPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -47,7 +47,7 @@ export function EnvironmentMapPreview({
       try {
         const bounds = canvas.getBoundingClientRect();
         const width = Math.max(1, Math.floor(bounds.width || 480));
-        const height = Math.max(1, Math.floor(bounds.height || 140));
+        const height = Math.max(1, Math.floor(bounds.height || width / aspectRatio));
         const loader = new HDRLoader();
 
         loader.setCrossOrigin('anonymous');
@@ -91,19 +91,23 @@ export function EnvironmentMapPreview({
       geometry?.dispose();
       renderer?.dispose();
     };
-  }, [extension, height, isHdrImage, previewUrl]);
+  }, [aspectRatio, extension, isHdrImage, previewUrl]);
+
+  const frameStyle: React.CSSProperties = {
+    aspectRatio: `${aspectRatio} / 1`,
+    width: '100%',
+  };
 
   if (!environmentMap || !previewUrl) {
     return (
       <div
         style={{
+          ...frameStyle,
           alignItems: 'center',
           border: '1px dashed #d9d9d9',
           borderRadius: 6,
           display: 'flex',
-          height,
           justifyContent: 'center',
-          width: '100%',
         }}
       >
         <Typography.Text type="secondary">{emptyText}</Typography.Text>
@@ -115,13 +119,12 @@ export function EnvironmentMapPreview({
     return (
       <div
         style={{
+          ...frameStyle,
           alignItems: 'center',
           border: '1px solid #d9d9d9',
           borderRadius: 6,
           display: 'flex',
-          height,
           justifyContent: 'center',
-          width: '100%',
         }}
       >
         <Typography.Text type="secondary">Only .hdr files can be used as environment maps</Typography.Text>
@@ -132,13 +135,12 @@ export function EnvironmentMapPreview({
   return (
     <div
       style={{
+        ...frameStyle,
         background: '#f5f5f5',
         border: '1px solid #d9d9d9',
         borderRadius: 6,
-        height,
         overflow: 'hidden',
         position: 'relative',
-        width: '100%',
       }}
     >
       <canvas ref={canvasRef} style={{ display: 'block', height: '100%', width: '100%' }} />
