@@ -73,6 +73,27 @@ export function findStorageByName(storages: any[], storageName?: string | null) 
   return storages.find((storage) => storage.name === storageName) || null;
 }
 
+function normalizeEnvironmentMapStorageSettingValue(value: any): EnvironmentMapStorageSettingValue {
+  let parsedValue = value || {};
+
+  if (typeof parsedValue === 'string') {
+    try {
+      parsedValue = JSON.parse(parsedValue);
+    } catch (error) {
+      parsedValue = {};
+    }
+  }
+
+  const storageName =
+    parsedValue && typeof parsedValue.storageName === 'string' && parsedValue.storageName
+      ? parsedValue.storageName
+      : null;
+
+  return {
+    storageName,
+  };
+}
+
 export async function getEnvironmentMapStorageSetting(plugin: any, transaction?: any) {
   const repository = plugin.db.getRepository(SETTINGS_RESOURCE);
   const record = await repository.findOne({
@@ -81,12 +102,8 @@ export async function getEnvironmentMapStorageSetting(plugin: any, transaction?:
     },
     transaction,
   });
-  const value = record?.get('value') || {};
-  const storageName = typeof value.storageName === 'string' && value.storageName ? value.storageName : null;
 
-  return {
-    storageName,
-  };
+  return normalizeEnvironmentMapStorageSettingValue(record?.get('value'));
 }
 
 export async function setEnvironmentMapStorageSetting(plugin: any, storageName: string | null, transaction?: any) {

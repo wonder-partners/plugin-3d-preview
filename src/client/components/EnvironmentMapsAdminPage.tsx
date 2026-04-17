@@ -10,7 +10,7 @@ import {
   getEnvironmentMapRecordAttachment,
   getEnvironmentMapRecordDisplayName,
 } from '../utils/environmentMaps';
-import { uploadEnvironmentMapFile } from '../utils/environmentMapApi';
+import { normalizeEnvironmentMapListResponse, uploadEnvironmentMapFile } from '../utils/environmentMapApi';
 import { EnvironmentMapPreview } from './EnvironmentMapPreview';
 
 export function EnvironmentMapsAdminPage() {
@@ -46,8 +46,7 @@ export function EnvironmentMapsAdminPage() {
             sort: ['-createdAt'],
           },
         });
-        const rows = response?.data?.data || [];
-        const meta = response?.data?.meta || {};
+        const { records: rows, meta } = normalizeEnvironmentMapListResponse(response);
 
         setRecords(rows);
         setPagination({

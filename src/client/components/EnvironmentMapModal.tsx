@@ -10,7 +10,7 @@ import {
   getEnvironmentMapRecordAttachment,
   getEnvironmentMapRecordDisplayName,
 } from '../utils/environmentMaps';
-import { uploadEnvironmentMapFile } from '../utils/environmentMapApi';
+import { normalizeEnvironmentMapListResponse, uploadEnvironmentMapFile } from '../utils/environmentMapApi';
 import { EnvironmentMapPreview } from './EnvironmentMapPreview';
 
 export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: EnvironmentMapModalProps) {
@@ -35,7 +35,7 @@ export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSav
             sort: ['title', '-createdAt'],
           },
         });
-        setMaps(response?.data?.data || []);
+        setMaps(normalizeEnvironmentMapListResponse(response).records);
       } catch (error) {
         message.error('Unable to load environment maps');
       } finally {

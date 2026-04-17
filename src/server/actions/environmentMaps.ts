@@ -5,16 +5,41 @@ import {
 } from '@nocobase/plugin-file-manager/server';
 import { koaMulter } from '@nocobase/utils';
 import { ENVIRONMENT_MAPS_RESOURCE } from '../constants';
-import { assertHdrAttachmentId } from '../utils/attachments';
+import { assertHdrAttachmentId, serializeAttachment } from '../utils/attachments';
 import { getFileManagerPlugin, resolveEnvironmentMapStorage } from '../utils/environmentMapStorage';
 
 export function registerEnvironmentMapActions(plugin: any) {
   plugin.app.resourcer.define({
     name: ENVIRONMENT_MAPS_RESOURCE,
     actions: {
+      list: listEnvironmentMaps(plugin),
       upload: uploadEnvironmentMap(plugin),
     },
   });
+}
+
+function listEnvironmentMaps(plugin: any) {
+  return async (ctx, next) => {
+    const { filter, page = 1, pageSize = 20, sort = ['-createdAt'] } = ctx.action.params;
+    const [records, count] = await ctx.db.getRepository(ENVIRONMENT_MAPS_RESOURCE).findAndCount({
+      appends: ['attachment'],
+      filter,
+      page,
+      pageSize,
+      sort,
+    });
+
+    ctx.body = {
+      data: await Promise.all(records.map((record) => serializeEnvironmentMapRecord(plugin, record))),
+      meta: {
+        count,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      },
+    };
+
+    await next();
+  };
 }
 
 function uploadEnvironmentMap(plugin: any) {
@@ -102,11 +127,47 @@ function uploadEnvironmentMap(plugin: any) {
     }
 
     ctx.body = {
-      data: environmentMapRecord,
+      data: await serializeEnvironmentMapRecord(plugin, environmentMapRecord),
     };
 
     await next();
   };
+}
+
+async function serializeEnvironmentMapRecord(plugin: any, record: any) {
+  if (!record) {
+    return null;
+  }
+
+  const data = typeof record.toJSON === 'function' ? record.toJSON() : record;
+  const attachment = record.get?.('attachment') || data.attachment;
+
+  return {
+    id: data.id,
+    title: data.title,
+    attachmentId: data.attachmentId,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    attachment: await serializeEnvironmentMapAttachment(plugin, attachment),
+  };
+}
+
+async function serializeEnvironmentMapAttachment(plugin: any, attachment: any) {
+  const serializedAttachment = serializeAttachment(attachment);
+
+  if (!serializedAttachment) {
+    return null;
+  }
+
+  try {
+    const fileManager = getFileManagerPlugin(plugin);
+    const attachmentData = typeof attachment.toJSON === 'function' ? attachment.toJSON() : attachment;
+    serializedAttachment.url = await fileManager.getFileURL(attachmentData);
+  } catch (error) {
+    // Keep the upload/list response usable even if a storage cannot generate a URL.
+  }
+
+  return serializedAttachment;
 }
 
 function makeFileFilter(storage: any) {
