@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, message, Modal, Select, Space, Typography, Upload } from 'antd';
+import { saveAs } from 'file-saver';
 import { useAPIClient } from '@nocobase/client';
 import { ENVIRONMENT_MAP_ACCEPT, ENVIRONMENT_MAPS_RESOURCE, FILE_SETTINGS_RESOURCE } from '../constants';
 import type { EnvironmentMapModalProps, EnvironmentMapRecord } from '../types';
 import { setCachedEnvironmentMap, invalidateEnvironmentMapCache } from '../hooks/useEnvironmentMap';
-import { getFileId } from '../utils/files';
+import { getFileId, resolveUrl } from '../utils/files';
 import {
   getDisplayName,
   getEnvironmentMapRecordAttachment,
@@ -126,6 +127,17 @@ export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSav
     [api, loadEnvironmentMaps],
   );
 
+  const downloadCurrentEnvironmentMap = useCallback(() => {
+    const url = resolveUrl(environmentMap?.url);
+
+    if (!url) {
+      message.error('Unable to download environment map');
+      return;
+    }
+
+    saveAs(url, environmentMap?.filename || `${getDisplayName(environmentMap)}.hdr`);
+  }, [environmentMap]);
+
   const selectedMap = useMemo(() => {
     if (!selectedMapId) {
       return null;
@@ -145,9 +157,14 @@ export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSav
       onCancel={onClose}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
-            <Button loading={uploading}>Upload environment map</Button>
-          </Upload>
+          <Space wrap>
+            <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
+              <Button loading={uploading}>Upload environment map</Button>
+            </Upload>
+            <Button disabled={!environmentMap} onClick={downloadCurrentEnvironmentMap}>
+              Download current HDRI
+            </Button>
+          </Space>
           <Space size="middle">
             <Button onClick={() => saveEnvironmentMap(null)} loading={saving}>
               Reset to default
