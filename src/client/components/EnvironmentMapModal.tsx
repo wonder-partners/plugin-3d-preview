@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CheckOutlined, DownloadOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { Button, message, Modal, Select, Space, Typography, Upload } from 'antd';
 import { saveAs } from 'file-saver';
 import { useAPIClient } from '@nocobase/client';
@@ -157,18 +158,10 @@ export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSav
       onCancel={onClose}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <Space wrap>
-            <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
-              <Button loading={uploading}>Upload environment map</Button>
-            </Upload>
-            <Button disabled={!environmentMap} onClick={downloadCurrentEnvironmentMap}>
-              Download current HDRI
-            </Button>
-          </Space>
+          <Button icon={<ReloadOutlined />} onClick={() => saveEnvironmentMap(null)} loading={saving}>
+            Reset
+          </Button>
           <Space size="middle">
-            <Button onClick={() => saveEnvironmentMap(null)} loading={saving}>
-              Reset to default
-            </Button>
             <Button onClick={onClose}>Cancel</Button>
             <Button
               type="primary"
@@ -184,26 +177,46 @@ export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSav
       destroyOnClose
     >
       <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Typography.Text>Current: {getDisplayName(environmentMap)}</Typography.Text>
-        <Select
-          allowClear
-          showSearch
-          loading={loading}
-          placeholder="Search or select an uploaded environment map"
-          value={selectedMapId}
-          onChange={(value) => setSelectedMapId(value)}
-          optionFilterProp="label"
-          filterOption={(input, option) =>
-            String(option?.label || '')
-              .toLowerCase()
-              .includes(input.toLowerCase())
-          }
-          options={maps.map((item) => ({
-            value: String(item.id),
-            label: getEnvironmentMapRecordDisplayName(item),
-          }))}
-          style={{ width: '100%' }}
-        />
+        <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} wrap>
+            <Typography.Text>Current: {getDisplayName(environmentMap)}</Typography.Text>
+            <Button icon={<DownloadOutlined />} disabled={!environmentMap} onClick={downloadCurrentEnvironmentMap}>
+              Download
+            </Button>
+          </Space>
+        </Space>
+
+        <Space direction="vertical" style={{ width: '100%' }} size="small">
+          <Space style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }} wrap>
+            <Typography.Text strong>Choose environment map</Typography.Text>
+            <Upload accept={ENVIRONMENT_MAP_ACCEPT} customRequest={uploadEnvironmentMap} showUploadList={false}>
+              <Button icon={<UploadOutlined />} loading={uploading}>
+                Import HDRI
+              </Button>
+            </Upload>
+          </Space>
+
+          <Select
+            allowClear
+            showSearch
+            loading={loading}
+            placeholder="Search or select an uploaded environment map"
+            value={selectedMapId}
+            onChange={(value) => setSelectedMapId(value)}
+            optionFilterProp="label"
+            filterOption={(input, option) =>
+              String(option?.label || '')
+                .toLowerCase()
+                .includes(input.toLowerCase())
+            }
+            options={maps.map((item) => ({
+              value: String(item.id),
+              label: getEnvironmentMapRecordDisplayName(item),
+            }))}
+            style={{ width: '100%' }}
+          />
+        </Space>
+
         <EnvironmentMapPreview environmentMap={selectedAttachment} />
       </Space>
     </Modal>
