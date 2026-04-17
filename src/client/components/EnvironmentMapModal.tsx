@@ -10,6 +10,7 @@ import {
   getEnvironmentMapRecordAttachment,
   getEnvironmentMapRecordDisplayName,
 } from '../utils/environmentMaps';
+import { uploadEnvironmentMapFile } from '../utils/environmentMapApi';
 import { EnvironmentMapPreview } from './EnvironmentMapPreview';
 
 export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSaved }: EnvironmentMapModalProps) {
@@ -105,20 +106,7 @@ export function EnvironmentMapModal({ file, open, environmentMap, onClose, onSav
       setUploading(true);
 
       try {
-        const formData = new FormData();
-        formData.append('file', options.file);
-
-        const response = await api.request({
-          url: `${ENVIRONMENT_MAPS_RESOURCE}:upload`,
-          method: 'post',
-          data: formData,
-        });
-        const environmentMapRecord = response?.data?.data;
-
-        if (!environmentMapRecord?.id) {
-          throw new Error('Upload response did not include an environment map id');
-        }
-
+        const environmentMapRecord = await uploadEnvironmentMapFile(api, options.file);
         options.onSuccess?.(environmentMapRecord);
         setMaps((currentMaps) => {
           const exists = currentMaps.some((item) => String(item.id) === String(environmentMapRecord.id));

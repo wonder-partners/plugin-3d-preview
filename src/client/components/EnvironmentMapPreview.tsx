@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Typography } from 'antd';
 import * as THREE from 'three';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import type { Attachment } from '../types';
 import { resolveUrl } from '../utils/files';
 import { getEnvironmentMapExtension } from '../utils/environmentMaps';
@@ -48,7 +48,7 @@ export function EnvironmentMapPreview({
         const bounds = canvas.getBoundingClientRect();
         const width = Math.max(1, Math.floor(bounds.width || 480));
         const height = Math.max(1, Math.floor(bounds.height || 140));
-        const loader = new RGBELoader();
+        const loader = new HDRLoader();
 
         loader.setCrossOrigin('anonymous');
         texture = await loader.loadAsync(previewUrl);

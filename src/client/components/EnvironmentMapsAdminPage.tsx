@@ -10,6 +10,7 @@ import {
   getEnvironmentMapRecordAttachment,
   getEnvironmentMapRecordDisplayName,
 } from '../utils/environmentMaps';
+import { uploadEnvironmentMapFile } from '../utils/environmentMapApi';
 import { EnvironmentMapPreview } from './EnvironmentMapPreview';
 
 export function EnvironmentMapsAdminPage() {
@@ -72,20 +73,7 @@ export function EnvironmentMapsAdminPage() {
       setUploading(true);
 
       try {
-        const formData = new FormData();
-        formData.append('file', options.file);
-
-        const uploadResponse = await api.request({
-          url: `${ENVIRONMENT_MAPS_RESOURCE}:upload`,
-          method: 'post',
-          data: formData,
-        });
-        const environmentMapRecord = uploadResponse?.data?.data;
-
-        if (!environmentMapRecord?.id) {
-          throw new Error('Upload response did not include an environment map id');
-        }
-
+        const environmentMapRecord = await uploadEnvironmentMapFile(api, options.file);
         options.onSuccess?.(environmentMapRecord);
         invalidateEnvironmentMapCache();
         message.success('Environment map uploaded');

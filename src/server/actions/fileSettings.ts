@@ -4,9 +4,11 @@ import { assertAttachmentExtension, findAttachment, getExtension, serializeAttac
 import { findEnvironmentMapRecordByAttachmentId } from '../hooks/environmentMaps';
 
 function serializeEnvironmentMap(attachment: any, environmentMapRecord: any) {
+  const serializedAttachment = serializeAttachment(attachment);
+
   return {
-    ...serializeAttachment(attachment),
-    title: environmentMapRecord.get('title') || serializeAttachment(attachment)?.title,
+    ...serializedAttachment,
+    title: environmentMapRecord.get('title') || serializedAttachment?.title,
   };
 }
 

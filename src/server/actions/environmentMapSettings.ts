@@ -2,8 +2,9 @@ import { SETTINGS_RESOURCE } from '../constants';
 import {
   findStorageByName,
   getDefaultStorage,
-  getEnvironmentMapStorageSetting,
   getFileManagerStorages,
+  resolveEnvironmentMapStorage,
+  serializeResolvedEnvironmentMapStorage,
   serializeStorage,
   setEnvironmentMapStorageSetting,
   sortStorages,
@@ -34,21 +35,10 @@ function listStorages(plugin: any) {
 
 function getEnvironmentMapStorage(plugin: any) {
   return async (ctx, next) => {
-    const [setting, storages] = await Promise.all([
-      getEnvironmentMapStorageSetting(plugin),
-      getFileManagerStorages(plugin),
-    ]);
-    const configuredStorage = findStorageByName(storages, setting.storageName);
-    const defaultStorage = getDefaultStorage(storages);
-    const effectiveStorage = configuredStorage || defaultStorage;
+    const resolvedStorage = await resolveEnvironmentMapStorage(plugin);
 
     ctx.body = {
-      data: {
-        storageName: setting.storageName,
-        effectiveStorageName: effectiveStorage?.name || null,
-        effectiveStorageTitle: effectiveStorage?.title || null,
-        missingStorageName: setting.storageName && !configuredStorage ? setting.storageName : undefined,
-      },
+      data: serializeResolvedEnvironmentMapStorage(resolvedStorage),
     };
 
     await next();
@@ -75,11 +65,10 @@ function setEnvironmentMapStorage(plugin: any) {
     const effectiveStorage = findStorageByName(storages, storageName) || getDefaultStorage(storages);
 
     ctx.body = {
-      data: {
+      data: serializeResolvedEnvironmentMapStorage({
         storageName,
-        effectiveStorageName: effectiveStorage?.name || null,
-        effectiveStorageTitle: effectiveStorage?.title || null,
-      },
+        effectiveStorage,
+      }),
     };
 
     await next();

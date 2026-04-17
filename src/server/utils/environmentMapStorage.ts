@@ -48,6 +48,19 @@ export function serializeStorage(storage: any) {
   };
 }
 
+export function serializeResolvedEnvironmentMapStorage(resolved: {
+  storageName: string | null;
+  effectiveStorage?: any;
+  missingStorageName?: string;
+}) {
+  return {
+    storageName: resolved.storageName,
+    effectiveStorageName: resolved.effectiveStorage?.name || null,
+    effectiveStorageTitle: resolved.effectiveStorage?.title || null,
+    missingStorageName: resolved.missingStorageName,
+  };
+}
+
 export function getDefaultStorage(storages: any[]) {
   return storages.find((storage) => storage.default) || storages[0] || null;
 }
