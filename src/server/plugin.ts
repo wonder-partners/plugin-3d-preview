@@ -31,11 +31,13 @@ export class Plugin3dPreviewServer extends Plugin {
   registerAcl() {
     this.app.acl.allow(FILE_SETTINGS_RESOURCE, 'getForFile', 'loggedIn');
     this.app.acl.allow(FILE_SETTINGS_RESOURCE, 'setForFile', 'loggedIn');
-    this.app.acl.allow(ENVIRONMENT_MAPS_RESOURCE, 'upload', 'loggedIn');
-    this.app.acl.allow(ENVIRONMENT_MAPS_RESOURCE, ['list', 'get', 'create', 'update', 'destroy'], 'loggedIn');
+    this.app.acl.registerSnippet({
+      name: `pm.${this.name}`,
+      actions: [],
+    });
     this.app.acl.registerSnippet({
       name: `pm.${this.name}.environmentMaps`,
-      actions: [`${FILE_SETTINGS_RESOURCE}:setForFile`, `${ENVIRONMENT_MAPS_RESOURCE}:*`],
+      actions: [`${ENVIRONMENT_MAPS_RESOURCE}:*`],
     });
     this.app.acl.registerSnippet({
       name: `pm.${this.name}.hdriStorage`,

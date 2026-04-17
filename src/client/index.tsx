@@ -1,5 +1,6 @@
 import { attachmentFileTypes, Plugin } from '@nocobase/client';
-import { EnvironmentMapSettingsPage } from './components/EnvironmentMapSettingsPage';
+import { EnvironmentMapsAdminPage } from './components/EnvironmentMapsAdminPage';
+import { EnvironmentMapStorageSettingsPage } from './components/EnvironmentMapStorageSettingsPage';
 import { Previewer } from './components/Previewer';
 import { ThumbnailPreviewer } from './components/ThumbnailPreviewer';
 
@@ -9,11 +10,24 @@ export class Plugin3dPreviewClient extends Plugin {
   async beforeLoad() {}
 
   async load() {
-    this.app.pluginSettingsManager.add('plugin-3d-preview-hdri-storage', {
+    this.app.pluginSettingsManager.add('plugin-3d-preview', {
       title: '3D preview',
       icon: 'GoldOutlined',
-      Component: EnvironmentMapSettingsPage,
+      aclSnippet: 'pm.plugin-3d-preview',
+    });
+
+    this.app.pluginSettingsManager.add('plugin-3d-preview.environment-maps', {
+      title: 'Environment maps',
+      Component: EnvironmentMapsAdminPage,
+      aclSnippet: 'pm.plugin-3d-preview.environmentMaps',
+      sort: 1,
+    });
+
+    this.app.pluginSettingsManager.add('plugin-3d-preview.storage', {
+      title: 'Storage',
+      Component: EnvironmentMapStorageSettingsPage,
       aclSnippet: 'pm.plugin-3d-preview.hdriStorage',
+      sort: 2,
     });
 
     attachmentFileTypes.add({
