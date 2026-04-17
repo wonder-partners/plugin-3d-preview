@@ -74,7 +74,9 @@ Supported uploaded format: `.hdr`.
 
 Connected users can manage HDRI records from the 3D preview environment maps settings page or the direct `/admin/plugin-3d-preview/environment-maps` route. The management page lets users upload, preview, download, and delete HDRI files.
 
-HDRI files are stored as standard NocoBase attachments, but only records in `plugin3dPreviewEnvironmentMaps` are offered by the 3D preview picker. Existing `.hdr` attachments uploaded before this development version are not imported automatically.
+New HDRI uploads use the storage configured in the `3D preview HDRI storage` admin menu. Selecting `Use File Manager default storage` makes the plugin use the current default storage from File Manager. Changing this setting only affects future HDRI uploads and does not migrate existing HDRI files.
+
+HDRI files are stored as standard NocoBase attachments, but only records in `plugin3dPreviewEnvironmentMaps` are offered by the 3D preview picker. Existing `.hdr` attachments uploaded before this development version are not imported automatically. File Manager storage rules, including size and MIME type restrictions, still apply to HDRI uploads.
 
 Deleting an HDRI record deletes the linked attachment and resets any 3D files that used it back to the default `<model-viewer>` environment behavior.
 

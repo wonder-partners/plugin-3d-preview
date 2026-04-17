@@ -9,7 +9,6 @@ import { formatDateTime, formatFileSize, resolveUrl } from '../utils/files';
 import {
   getEnvironmentMapRecordAttachment,
   getEnvironmentMapRecordDisplayName,
-  isHdrAttachment,
 } from '../utils/environmentMaps';
 import { EnvironmentMapPreview } from './EnvironmentMapPreview';
 
@@ -77,26 +76,17 @@ export function EnvironmentMapsAdminPage() {
         formData.append('file', options.file);
 
         const uploadResponse = await api.request({
-          url: 'attachments:create',
+          url: `${ENVIRONMENT_MAPS_RESOURCE}:upload`,
           method: 'post',
           data: formData,
         });
-        const uploaded = uploadResponse?.data?.data;
+        const environmentMapRecord = uploadResponse?.data?.data;
 
-        if (!uploaded?.id || !isHdrAttachment(uploaded)) {
-          throw new Error('Only .hdr files can be used as environment maps');
+        if (!environmentMapRecord?.id) {
+          throw new Error('Upload response did not include an environment map id');
         }
 
-        await api.request({
-          url: `${ENVIRONMENT_MAPS_RESOURCE}:create`,
-          method: 'post',
-          data: {
-            title: uploaded.title || uploaded.filename,
-            attachmentId: uploaded.id,
-          },
-        });
-
-        options.onSuccess?.(uploaded);
+        options.onSuccess?.(environmentMapRecord);
         invalidateEnvironmentMapCache();
         message.success('Environment map uploaded');
         await loadRecords(1, pagination.pageSize);

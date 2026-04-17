@@ -1,5 +1,7 @@
 import { Plugin } from '@nocobase/server';
-import { ENVIRONMENT_MAPS_RESOURCE, FILE_SETTINGS_RESOURCE } from './constants';
+import { ENVIRONMENT_MAPS_RESOURCE, FILE_SETTINGS_RESOURCE, SETTINGS_RESOURCE } from './constants';
+import { registerEnvironmentMapActions } from './actions/environmentMaps';
+import { registerEnvironmentMapSettingsActions } from './actions/environmentMapSettings';
 import { registerFileSettingsActions } from './actions/fileSettings';
 import { registerAttachmentCleanup } from './hooks/attachments';
 import { registerEnvironmentMapHooks } from './hooks/environmentMaps';
@@ -16,8 +18,11 @@ export class Plugin3dPreviewServer extends Plugin {
   async load() {
     await ensureCollection(this, FILE_SETTINGS_RESOURCE);
     await ensureCollection(this, ENVIRONMENT_MAPS_RESOURCE);
+    await ensureCollection(this, SETTINGS_RESOURCE);
 
     registerFileSettingsActions(this);
+    registerEnvironmentMapSettingsActions(this);
+    registerEnvironmentMapActions(this);
     this.registerAcl();
     registerEnvironmentMapHooks(this);
     registerAttachmentCleanup(this);
@@ -26,10 +31,19 @@ export class Plugin3dPreviewServer extends Plugin {
   registerAcl() {
     this.app.acl.allow(FILE_SETTINGS_RESOURCE, 'getForFile', 'loggedIn');
     this.app.acl.allow(FILE_SETTINGS_RESOURCE, 'setForFile', 'loggedIn');
+    this.app.acl.allow(ENVIRONMENT_MAPS_RESOURCE, 'upload', 'loggedIn');
     this.app.acl.allow(ENVIRONMENT_MAPS_RESOURCE, ['list', 'get', 'create', 'update', 'destroy'], 'loggedIn');
     this.app.acl.registerSnippet({
       name: `pm.${this.name}.environmentMaps`,
       actions: [`${FILE_SETTINGS_RESOURCE}:setForFile`, `${ENVIRONMENT_MAPS_RESOURCE}:*`],
+    });
+    this.app.acl.registerSnippet({
+      name: `pm.${this.name}.hdriStorage`,
+      actions: [
+        `${SETTINGS_RESOURCE}:listStorages`,
+        `${SETTINGS_RESOURCE}:getEnvironmentMapStorage`,
+        `${SETTINGS_RESOURCE}:setEnvironmentMapStorage`,
+      ],
     });
   }
 

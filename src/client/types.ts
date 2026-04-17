@@ -30,6 +30,22 @@ export type EnvironmentMapRecord = {
   updatedAt?: string;
 };
 
+export type StorageOption = {
+  id: string | number;
+  name: string;
+  title: string;
+  type: string;
+  default?: boolean;
+  rules?: Record<string, any>;
+};
+
+export type EnvironmentMapStorageSettings = {
+  storageName: string | null;
+  effectiveStorageName: string | null;
+  effectiveStorageTitle: string | null;
+  missingStorageName?: string;
+};
+
 export type PreviewerProps = {
   index: number;
   list: File[];
